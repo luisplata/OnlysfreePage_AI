@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ShoppingCart } from 'lucide-react';
+import { ShoppingCart, PlayCircle } from 'lucide-react';
 
 interface ProductCardProps {
   product: Product;
@@ -29,7 +29,7 @@ export function ProductCard({ product }: ProductCardProps) {
                 fill
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                 className="object-cover transition-transform duration-300 group-hover:scale-105"
-                data-ai-hint={`${product.category} product`}
+                data-ai-hint={`${product.category} ${product.productType}`}
               />
             </div>
           </CardHeader>
@@ -43,9 +43,13 @@ export function ProductCard({ product }: ProductCardProps) {
           </CardContent>
           <CardFooter className="p-4 pt-0 flex justify-between items-center">
             <p className="text-lg font-semibold text-primary">{product.price}</p>
-            <Button variant="outline" size="sm" aria-label={`Add ${product.title} to cart`}>
-              <ShoppingCart className="mr-2 h-4 w-4" />
-              Add to Cart
+            <Button variant="outline" size="sm" aria-label={`View ${product.title}`}>
+              {product.productType === 'streaming' ? (
+                <PlayCircle className="mr-2 h-4 w-4" />
+              ) : (
+                <ShoppingCart className="mr-2 h-4 w-4" />
+              )}
+              {product.productType === 'streaming' ? 'View Stream' : 'Add to Cart'}
             </Button>
           </CardFooter>
         </Card>
