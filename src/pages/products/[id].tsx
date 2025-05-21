@@ -115,7 +115,7 @@ export const getStaticPaths: GetStaticPaths = async () => {
   const paths = mockProducts.map((product) => ({
     params: { id: product.id },
   }));
-  return { paths, fallback: 'blocking' }; // 'blocking' or true if you want to ISR for new paths, false for 404
+  return { paths, fallback: false }; // Changed 'blocking' to 'false'
 };
 
 export const getStaticProps: GetStaticProps<{ product: Product | null }, { id: string }> = async (context) => {
@@ -133,6 +133,6 @@ export const getStaticProps: GetStaticProps<{ product: Product | null }, { id: s
     props: {
       product,
     },
-    // revalidate: 60, // Optional: enable ISR if your data changes frequently
+    // revalidate: 60, // Optional: enable ISR if your data changes frequently. Not compatible with output: 'export'
   };
 };
