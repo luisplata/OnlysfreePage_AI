@@ -1,6 +1,7 @@
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
+  output: 'export', // <-- Añadido para habilitar la exportación estática
   /* config options here */
   typescript: {
     ignoreBuildErrors: true,
@@ -9,6 +10,7 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
   images: {
+    unoptimized: true, // <-- Añadido para deshabilitar la optimización de imágenes
     remotePatterns: [
       {
         protocol: 'https',
