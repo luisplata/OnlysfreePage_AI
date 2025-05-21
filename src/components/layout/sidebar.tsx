@@ -71,18 +71,21 @@ export function SaleCategorySidebar() {
                         asChild
                         isActive={pathname === `/products/${product.id}`}
                         tooltip={product.title}
-                        className="h-auto py-2" // Adjust height for potentially taller content if titles wrap
+                        className="h-auto py-3" // Increased vertical padding
                       >
                         <>
                           <Image
                             src={product.imageUrl}
                             alt={product.title}
-                            width={24} // Small image for sidebar
-                            height={24}
-                            className="rounded-sm object-cover flex-shrink-0"
+                            width={36} // Increased image size
+                            height={36} // Increased image size
+                            className="rounded-md object-cover flex-shrink-0" // Added rounded-md for softer corners
                             data-ai-hint={`${product.category} thumbnail`}
                           />
-                          <span className="truncate leading-snug">{product.title}</span>
+                          {/* Allow text to wrap to two lines */}
+                          <span className="line-clamp-2 leading-snug text-sm"> 
+                            {product.title}
+                          </span>
                         </>
                       </SidebarMenuButton>
                     </Link>
@@ -102,3 +105,4 @@ export function SaleCategorySidebar() {
     </Sidebar>
   );
 }
+
