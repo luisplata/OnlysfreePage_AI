@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { useRouter } from 'next/router'; // <--- Cambiado de next/navigation a next/router
 import {
   Sidebar,
   SidebarHeader,
@@ -17,7 +17,8 @@ import { Button } from '@/components/ui/button';
 import { LogOut } from 'lucide-react';
 
 export function SaleCategorySidebar() {
-  const pathname = usePathname();
+  const router = useRouter(); // <--- Cambiado para usar useRouter
+  const pathname = router.pathname; // <--- Obtener pathname desde router
 
   return (
     <Sidebar collapsible="icon">

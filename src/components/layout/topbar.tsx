@@ -1,4 +1,4 @@
-"use client";
+// "use client"; // Eliminado, no es idiomático para Pages Router aquí
 
 import * as React from 'react';
 import Link from 'next/link';
