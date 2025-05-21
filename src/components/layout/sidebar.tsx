@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { useRouter } from 'next/router'; // <--- Cambiado de next/navigation a next/router
+import { useRouter } from 'next/router';
 import {
   Sidebar,
   SidebarHeader,
@@ -17,8 +17,8 @@ import { Button } from '@/components/ui/button';
 import { LogOut } from 'lucide-react';
 
 export function SaleCategorySidebar() {
-  const router = useRouter(); // <--- Cambiado para usar useRouter
-  const pathname = router.pathname; // <--- Obtener pathname desde router
+  const router = useRouter(); 
+  const pathname = router.pathname; 
 
   return (
     <Sidebar collapsible="icon">
@@ -31,13 +31,16 @@ export function SaleCategorySidebar() {
         <SidebarMenu>
           {saleCategories.map((category) => (
             <SidebarMenuItem key={category.id}>
-              <Link href={category.href} legacyBehavior passHref>
+              <Link href={category.href} passHref>
                 <SidebarMenuButton
+                  asChild
                   isActive={pathname === category.href}
                   tooltip={category.name}
                 >
-                  <category.icon />
-                  <span>{category.name}</span>
+                  <a>
+                    <category.icon />
+                    <span>{category.name}</span>
+                  </a>
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
