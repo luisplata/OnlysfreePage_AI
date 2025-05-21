@@ -7,10 +7,9 @@ import { Loader2 } from 'lucide-react';
 
 // Helper function to transform API pack data to Product type
 function transformApiPackToProduct(apiPack: ApiPack): Product {
-  // Use tags for description and category for simplicity
-  // You might want to process tags further for a more specific category
   const description = apiPack.tags || 'No description available.';
-  const category = apiPack.tags ? apiPack.tags.split('-')[0] || 'General' : 'General';
+  // Extract a category from tags, e.g., "meganworld" from "meganworld-onlyfans"
+  const category = apiPack.tags ? apiPack.tags.split('-')[0].trim() || 'General' : 'General';
 
   return {
     id: String(apiPack.id),
@@ -34,15 +33,20 @@ export default function HomePage() {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch('https://test.onlysfree.com/api/packs');
+        // Use the proxied URL
+        const response = await fetch('/api-proxy/packs');
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+          throw new Error(`HTTP error! status: ${response.status}, message: ${await response.text()}`);
         }
         const data: ApiPackListResponse = await response.json();
-        setProducts(data.data.map(transformApiPackToProduct));
+        if (data && data.data) {
+          setProducts(data.data.map(transformApiPackToProduct));
+        } else {
+          throw new Error('API response did not contain expected data structure.');
+        }
       } catch (e: any) {
         console.error("Failed to fetch products:", e);
-        setError(e.message || 'Failed to load products.');
+        setError(e.message || 'Failed to load products. Check browser console for more details.');
       } finally {
         setLoading(false);
       }
@@ -64,6 +68,7 @@ export default function HomePage() {
       <div className="container mx-auto py-8 text-center">
         <h1 className="text-3xl font-bold text-destructive mb-4">Error</h1>
         <p className="text-xl text-muted-foreground">{error}</p>
+        <p className="text-sm text-muted-foreground mt-2">If this is a "Failed to fetch" error, it might be a CORS issue. The development proxy has been set up. If it persists, check your network or the API server.</p>
       </div>
     );
   }
@@ -71,8 +76,11 @@ export default function HomePage() {
   if (products.length === 0) {
     return (
       <div className="container mx-auto py-8 text-center">
+        <Head>
+          <title>Venta Rapida - No Products</title>
+        </Head>
         <h1 className="text-3xl font-bold text-foreground mb-4">No Products Found</h1>
-        <p className="text-xl text-muted-foreground">Please check back later.</p>
+        <p className="text-xl text-muted-foreground">Please check back later or try refreshing the page.</p>
       </div>
     );
   }

@@ -26,12 +26,19 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'simp6.jpg.church', // Added from the detail API example
+        hostname: 'simp6.jpg.church',
         port: '',
         pathname: '/**',
       }
-      // Add other image hostnames from your API here if necessary
     ],
+  },
+  async rewrites() {
+    return [
+      {
+        source: '/api-proxy/:path*',
+        destination: 'https://test.onlysfree.com/api/:path*',
+      },
+    ];
   },
 };
 

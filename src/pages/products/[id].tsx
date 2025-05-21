@@ -12,7 +12,7 @@ import Head from 'next/head';
 // Helper function to transform API model detail to Product type
 function transformApiModelToProduct(apiModel: ApiModelDetailResponse): Product {
   const description = apiModel.tags || 'No description available.';
-  const category = apiModel.tags ? apiModel.tags.split('-')[0] || 'General' : 'General';
+  const category = apiModel.tags ? apiModel.tags.split('-')[0].trim() || 'General' : 'General';
   return {
     id: String(apiModel.id),
     title: apiModel.nombre,
@@ -35,8 +35,6 @@ export default function ProductDetailPage() {
 
   useEffect(() => {
     if (!router.isReady || !id) {
-      // Wait for router to be ready and id to be available
-      // If id is not available after router is ready, it might be an issue
       if (router.isReady && !id) {
         setLoading(false);
         setError("Product ID is missing.");
@@ -44,28 +42,35 @@ export default function ProductDetailPage() {
       return;
     }
 
-    async function fetchProductDetails(productId: string) {
+    const productId = Array.isArray(id) ? id[0] : id;
+
+    async function fetchProductDetails(currentId: string) {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch(`https://test.onlysfree.com/api/model/${productId}`);
+        // Use the proxied URL
+        const response = await fetch(`/api-proxy/model/${currentId}`);
         if (!response.ok) {
           if (response.status === 404) {
             throw new Error('Product not found.');
           }
-          throw new Error(`HTTP error! status: ${response.status}`);
+          throw new Error(`HTTP error! status: ${response.status}, message: ${await response.text()}`);
         }
         const data: ApiModelDetailResponse = await response.json();
-        setProduct(transformApiModelToProduct(data));
+        if (data && data.id) { // Check if essential data is present
+             setProduct(transformApiModelToProduct(data));
+        } else {
+            throw new Error('API response did not contain expected data structure for product details.');
+        }
       } catch (e: any) {
         console.error("Failed to fetch product details:", e);
-        setError(e.message || 'Failed to load product details.');
+        setError(e.message || 'Failed to load product details. Check browser console for more details.');
       } finally {
         setLoading(false);
       }
     }
 
-    fetchProductDetails(Array.isArray(id) ? id[0] : id);
+    fetchProductDetails(productId);
   }, [id, router.isReady]);
 
   if (loading) {
@@ -95,7 +100,8 @@ export default function ProductDetailPage() {
           <p className="text-xl text-muted-foreground mb-6">
             Sorry, we couldn't find the product you were looking for.
           </p>
-          <Button variant="outline" asChild>
+           <p className="text-sm text-muted-foreground mt-2">If this is a "Failed to fetch" error, it might be a CORS issue. The development proxy has been set up. If it persists, check your network or the API server.</p>
+          <Button variant="outline" asChild className="mt-4">
             <Link href="/">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to All Products
@@ -178,38 +184,17 @@ export default function ProductDetailPage() {
   );
 }
 
-// Required for dynamic routes with `output: 'export'` and client-side data fetching.
-// This tells Next.js that no specific paths are pre-rendered at build time.
-// The page will be a shell, and data fetched client-side.
-// If you know some paths you want to pre-render, you can list them here.
 export async function getStaticPaths() {
   return {
-    paths: [], // No paths are pre-rendered
-    fallback: 'blocking', // Or false. 'blocking' will SSR on first request if page doesn't exist, then cache.
-                         // For pure static export with client-side fetch, 'false' might be better if you only rely on client nav.
-                         // However, direct URL access might 404 with 'false' if not pre-built.
-                         // Let's use 'blocking' to allow direct URL access to generate the shell if needed.
-                         // UPDATE: For `output: 'export'`, fallback must be `false` if paths are not fully known.
-                         // But if we are doing purely client-side fetching, we can return paths: [], fallback: false
-                         // and the client will fetch.
-                         // Given error "Internal Server Error", Next.js might still prefer explicit paths or fallback:false for export.
-                         // Let's try with fallback: false, and the client-side logic will handle it.
+    paths: [], 
+    fallback: false, 
   };
 }
 
-// Required if getStaticPaths is used.
-// This will be called at build time for paths from getStaticPaths,
-// or on first request if fallback: 'blocking' is used and path not pre-built.
-// For purely client-side fetched dynamic routes in an exported site, this can be minimal.
 export async function getStaticProps({ params }: { params: { id: string } }) {
-  // We don't fetch data here anymore for pre-rendering individual product pages by default
-  // The client-side useEffect will handle fetching.
-  // Return props, including the id, so the client can use it if needed,
-  // although router.query.id is the primary source.
   return {
     props: {
-      // No product data passed from here for client-side fetching strategy
-      // id: params.id, // can be useful for the component
+      // id: params.id, // Pass id if needed by the component, though router.query.id is used
     },
   };
 }
