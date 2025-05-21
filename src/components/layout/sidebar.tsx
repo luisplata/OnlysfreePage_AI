@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { useRouter } from 'next/router';
+import { useRouter } from 'next/router'; // Correct hook for Pages Router
 import {
   Sidebar,
   SidebarHeader,
@@ -33,14 +33,14 @@ export function SaleCategorySidebar() {
             <SidebarMenuItem key={category.id}>
               <Link href={category.href} passHref>
                 <SidebarMenuButton
-                  asChild
+                  asChild // Use asChild to let Link render the <a> and pass props
                   isActive={pathname === category.href}
                   tooltip={category.name}
                 >
-                  <a>
+                  <> {/* Content for the link */}
                     <category.icon />
                     <span>{category.name}</span>
-                  </a>
+                  </>
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
