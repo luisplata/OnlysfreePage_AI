@@ -9,7 +9,7 @@ import { Loader2 } from 'lucide-react';
 function transformApiPackToProduct(apiPack: ApiPack): Product {
   const description = apiPack.tags || 'No description available.';
   // Extract a category from tags, e.g., "meganworld" from "meganworld-onlyfans"
-  const category = apiPack.tags ? apiPack.tags.split('-')[0].trim() || 'General' : 'General';
+  const category = apiPack.tags ? apiPack.tags.split('-')[0].trim().toLowerCase() || 'general' : 'general';
 
   return {
     id: String(apiPack.id),
@@ -33,8 +33,8 @@ export default function HomePage() {
       setLoading(true);
       setError(null);
       try {
-        // Use the proxied URL
-        const response = await fetch('/api-proxy/packs');
+        // Use the absolute API URL for static export compatibility
+        const response = await fetch('https://test.onlysfree.com/api/packs');
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}, message: ${await response.text()}`);
         }
@@ -66,9 +66,13 @@ export default function HomePage() {
   if (error) {
     return (
       <div className="container mx-auto py-8 text-center">
-        <h1 className="text-3xl font-bold text-destructive mb-4">Error</h1>
+        <h1 className="text-3xl font-bold text-destructive mb-4">Error Loading Products</h1>
         <p className="text-xl text-muted-foreground">{error}</p>
-        <p className="text-sm text-muted-foreground mt-2">If this is a "Failed to fetch" error, it might be a CORS issue. The development proxy has been set up. If it persists, check your network or the API server.</p>
+        <p className="text-sm text-muted-foreground mt-2">
+          This might be due to a network issue or the API server not responding. 
+          Please check your internet connection and ensure the API at https://test.onlysfree.com is accessible.
+          CORS issues might also occur if the API server is not configured to allow requests from this domain.
+        </p>
       </div>
     );
   }

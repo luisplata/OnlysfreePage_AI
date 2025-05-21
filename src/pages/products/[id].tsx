@@ -12,7 +12,7 @@ import Head from 'next/head';
 // Helper function to transform API model detail to Product type
 function transformApiModelToProduct(apiModel: ApiModelDetailResponse): Product {
   const description = apiModel.tags || 'No description available.';
-  const category = apiModel.tags ? apiModel.tags.split('-')[0].trim() || 'General' : 'General';
+  const category = apiModel.tags ? apiModel.tags.split('-')[0].trim().toLowerCase() || 'general' : 'general';
   return {
     id: String(apiModel.id),
     title: apiModel.nombre,
@@ -37,27 +37,33 @@ export default function ProductDetailPage() {
     if (!router.isReady || !id) {
       if (router.isReady && !id) {
         setLoading(false);
-        setError("Product ID is missing.");
+        setError("Product ID is missing from URL.");
       }
       return;
     }
 
     const productId = Array.isArray(id) ? id[0] : id;
+    if (!productId) {
+        setLoading(false);
+        setError("Product ID is invalid.");
+        return;
+    }
+
 
     async function fetchProductDetails(currentId: string) {
       setLoading(true);
       setError(null);
       try {
-        // Use the proxied URL
-        const response = await fetch(`/api-proxy/model/${currentId}`);
+        // Use the absolute API URL for static export compatibility
+        const response = await fetch(`https://test.onlysfree.com/api/model/${currentId}`);
         if (!response.ok) {
           if (response.status === 404) {
-            throw new Error('Product not found.');
+            throw new Error('Product not found on the API.');
           }
           throw new Error(`HTTP error! status: ${response.status}, message: ${await response.text()}`);
         }
         const data: ApiModelDetailResponse = await response.json();
-        if (data && data.id) { // Check if essential data is present
+        if (data && data.id) { 
              setProduct(transformApiModelToProduct(data));
         } else {
             throw new Error('API response did not contain expected data structure for product details.');
@@ -100,7 +106,11 @@ export default function ProductDetailPage() {
           <p className="text-xl text-muted-foreground mb-6">
             Sorry, we couldn't find the product you were looking for.
           </p>
-           <p className="text-sm text-muted-foreground mt-2">If this is a "Failed to fetch" error, it might be a CORS issue. The development proxy has been set up. If it persists, check your network or the API server.</p>
+          <p className="text-sm text-muted-foreground mt-2">
+           This might be due to a network issue or the API server not responding. 
+           Please check your internet connection and ensure the API at https://test.onlysfree.com is accessible.
+           CORS issues might also occur if the API server is not configured to allow requests from this domain.
+          </p>
           <Button variant="outline" asChild className="mt-4">
             <Link href="/">
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -155,7 +165,7 @@ export default function ProductDetailPage() {
                     sizes="(max-width: 768px) 100vw, 50vw"
                     className="object-cover"
                     data-ai-hint={`${product.category} ${product.productType} product detail`}
-                    priority={true}
+                    priority={true} // Consider making this dynamic if many images are above the fold
                     onError={(e) => { e.currentTarget.src = 'https://placehold.co/600x400.png?text=Image+Error'; e.currentTarget.srcset = '';}}
                   />
                 </div>
@@ -184,17 +194,23 @@ export default function ProductDetailPage() {
   );
 }
 
+// Required for dynamic routes with output: 'export'
+// Returns an empty paths array as pages are generated/content-fetched client-side
 export async function getStaticPaths() {
   return {
     paths: [], 
-    fallback: false, 
+    fallback: false, // All paths not listed here will 404
   };
 }
 
+// Required if getStaticPaths is used. 
+// Can be minimal if all data fetching is client-side.
 export async function getStaticProps({ params }: { params: { id: string } }) {
+  // You could potentially pre-fetch data here for known paths if desired,
+  // but for a fully client-side fetched approach, this can be simple.
   return {
     props: {
-      // id: params.id, // Pass id if needed by the component, though router.query.id is used
+      // id: params.id, // Pass id if needed, though router.query.id is used client-side
     },
   };
 }
