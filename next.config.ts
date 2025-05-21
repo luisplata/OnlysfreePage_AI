@@ -1,8 +1,8 @@
+
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
-  output: 'export', // <-- Añadido para habilitar la exportación estática
-  /* config options here */
+  output: 'export',
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -10,7 +10,7 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
   images: {
-    unoptimized: true, // <-- Añadido para deshabilitar la optimización de imágenes
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',
@@ -18,6 +18,19 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'i.ibb.co',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'simp6.jpg.church', // Added from the detail API example
+        port: '',
+        pathname: '/**',
+      }
+      // Add other image hostnames from your API here if necessary
     ],
   },
 };

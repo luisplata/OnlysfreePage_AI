@@ -2,8 +2,9 @@
 "use client";
 
 import Link from 'next/link';
-import { useRouter } from 'next/router';
-import Image from 'next/image';
+import { usePathname } from 'next/navigation'; // Corrected import for App Router
+// For Pages Router, you'd use: import { useRouter } from 'next/router'; and then const router = useRouter(); const pathname = router.pathname;
+
 import {
   Sidebar,
   SidebarHeader,
@@ -12,24 +13,30 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarFooter,
-  SidebarSeparator,
-  SidebarGroup,
-  SidebarGroupLabel,
+  // SidebarSeparator, // Commented out as featured products are removed for now
+  // SidebarGroup, // Commented out
+  // SidebarGroupLabel, // Commented out
 } from '@/components/ui/sidebar';
 import { VentaRapidaLogo } from '@/components/icons';
-import { saleCategories, mockProducts } from '@/data/mock-data';
-import type { Product } from '@/types';
+import { saleCategories } from '@/data/mock-data'; // Keep saleCategories for now
+// import type { Product } from '@/types'; // Commented out as featured products are removed
+// import Image from 'next/image'; // Commented out
 import { Button } from '@/components/ui/button';
 import { LogOut } from 'lucide-react';
 
-const featuredProductsCount = 3; // Show first 3 products as featured
+// const featuredProductsCount = 3; // Commented out
 
 export function SaleCategorySidebar() {
-  const router = useRouter();
-  const pathname = router.pathname;
+  const pathname = usePathname(); // For App Router. If you are truly on Pages Router, this needs to change.
+                                  // Assuming you might revert or for future App Router use.
+                                  // For Pages Router:
+                                  // import { useRouter } from 'next/router';
+                                  // const router = useRouter();
+                                  // const pathname = router.pathname;
 
-  // Select a few products to feature
-  const productsToFeature: Product[] = mockProducts.slice(0, featuredProductsCount);
+
+  // Select a few products to feature - This section is removed for now
+  // const productsToFeature: Product[] = []; // mockProducts.slice(0, featuredProductsCount);
 
   return (
     <Sidebar collapsible="icon">
@@ -58,7 +65,8 @@ export function SaleCategorySidebar() {
           ))}
         </SidebarMenu>
 
-        {productsToFeature.length > 0 && (
+        {/* Featured Products Section Removed for API integration focus */}
+        {/* {productsToFeature.length > 0 && (
           <>
             <SidebarSeparator />
             <SidebarGroup>
@@ -71,18 +79,17 @@ export function SaleCategorySidebar() {
                         asChild
                         isActive={pathname === `/products/${product.id}`}
                         tooltip={product.title}
-                        className="h-auto py-3" // Increased vertical padding
+                        className="h-auto py-3"
                       >
                         <>
                           <Image
                             src={product.imageUrl}
                             alt={product.title}
-                            width={36} // Increased image size
-                            height={36} // Increased image size
-                            className="rounded-md object-cover flex-shrink-0" // Added rounded-md for softer corners
+                            width={36}
+                            height={36}
+                            className="rounded-md object-cover flex-shrink-0"
                             data-ai-hint={`${product.category} thumbnail`}
                           />
-                          {/* Allow text to wrap to two lines */}
                           <span className="line-clamp-2 leading-snug text-sm"> 
                             {product.title}
                           </span>
@@ -94,7 +101,7 @@ export function SaleCategorySidebar() {
               </SidebarMenu>
             </SidebarGroup>
           </>
-        )}
+        )} */}
       </SidebarContent>
       <SidebarFooter className="p-2">
          <SidebarMenuButton tooltip="Logout">
@@ -105,4 +112,3 @@ export function SaleCategorySidebar() {
     </Sidebar>
   );
 }
-

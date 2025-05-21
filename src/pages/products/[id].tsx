@@ -1,85 +1,74 @@
 
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
-import type { Product } from '@/types';
-import { mockProducts } from '@/data/mock-data';
+import type { Product, ApiModelDetailResponse } from '@/types';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShoppingCart, ArrowLeft, Loader2, PlayCircle } from 'lucide-react';
+import { ExternalLink, ArrowLeft, Loader2, PlayCircle, Image as ImageIcon } from 'lucide-react';
 import Link from 'next/link';
 import Head from 'next/head';
 
-// Required for dynamic routes with `output: 'export'`
-// This tells Next.js that no specific paths are pre-rendered at build time.
-// The page will be a shell, and data fetched client-side.
-export async function getStaticPaths() {
-  const paths = mockProducts.map((product) => ({
-    params: { id: product.id },
-  }));
+// Helper function to transform API model detail to Product type
+function transformApiModelToProduct(apiModel: ApiModelDetailResponse): Product {
+  const description = apiModel.tags || 'No description available.';
+  const category = apiModel.tags ? apiModel.tags.split('-')[0] || 'General' : 'General';
   return {
-    paths, // Pre-render paths from mockProducts
-    fallback: false, // Any path not returned by getStaticPaths will result in a 404 page.
+    id: String(apiModel.id),
+    title: apiModel.nombre,
+    description: description,
+    imageUrl: apiModel.imagen,
+    category: category,
+    productType: apiModel.isVideo === "1" || (apiModel.url_video && apiModel.url_video !== "") ? 'streaming' : 'standard',
+    videoUrl: apiModel.url_video || undefined,
+    hotLink: apiModel.hotLink,
   };
 }
 
-// Required if getStaticPaths is used.
-// Can be minimal if all data is fetched client-side for some products,
-// but for pre-rendered paths, it should fetch data.
-export async function getStaticProps({ params }: { params: { id: string } }) {
-  const product = mockProducts.find((p) => p.id === params.id) || null;
-  return {
-    props: {
-      product, // Pass product data for pre-rendering
-    },
-  };
-}
-
-export default function ProductDetailPage({ product: initialProduct }: { product: Product | null }) {
+export default function ProductDetailPage() {
   const router = useRouter();
-  const { id: queryId } = router.query;
+  const { id } = router.query;
 
-  const [product, setProduct] = useState<Product | null | undefined>(initialProduct);
-  const [loading, setLoading] = useState(!initialProduct); // Only loading if no initial product
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // If product was passed via getStaticProps, no need to fetch client-side initially
-    if (initialProduct) {
-      setProduct(initialProduct);
-      setLoading(false);
-      return;
-    }
-
-    // Fallback to client-side fetching if not pre-rendered or if router ID changes
-    if (!router.isReady) {
-      setLoading(true);
-      return;
-    }
-
-    let currentId: string | undefined = undefined;
-    if (Array.isArray(queryId)) {
-      currentId = queryId[0];
-    } else {
-      currentId = queryId;
-    }
-
-    if (currentId) {
-      setLoading(true);
-      // Simulate API call. Replace this with your actual API call.
-      // console.log('Client-side: Fetching product with ID:', currentId);
-      const foundProduct = mockProducts.find((p) => p.id === currentId);
-      setTimeout(() => { // Simulate network latency
-        setProduct(foundProduct || null);
+    if (!router.isReady || !id) {
+      // Wait for router to be ready and id to be available
+      // If id is not available after router is ready, it might be an issue
+      if (router.isReady && !id) {
         setLoading(false);
-      }, 300);
-    } else if (router.isReady) {
-      // console.log('Client-side: No valid ID available, setting product to null');
-      setProduct(null);
-      setLoading(false);
+        setError("Product ID is missing.");
+      }
+      return;
     }
-  }, [queryId, router.isReady, initialProduct]);
 
-  if (loading || product === undefined) {
+    async function fetchProductDetails(productId: string) {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await fetch(`https://test.onlysfree.com/api/model/${productId}`);
+        if (!response.ok) {
+          if (response.status === 404) {
+            throw new Error('Product not found.');
+          }
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data: ApiModelDetailResponse = await response.json();
+        setProduct(transformApiModelToProduct(data));
+      } catch (e: any) {
+        console.error("Failed to fetch product details:", e);
+        setError(e.message || 'Failed to load product details.');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchProductDetails(Array.isArray(id) ? id[0] : id);
+  }, [id, router.isReady]);
+
+  if (loading) {
     return (
       <>
         <Head>
@@ -93,14 +82,16 @@ export default function ProductDetailPage({ product: initialProduct }: { product
     );
   }
 
-  if (!product) {
+  if (error || !product) {
     return (
       <>
         <Head>
           <title>Product Not Found - Venta Rapida</title>
         </Head>
         <div className="container mx-auto py-8 text-center">
-          <h1 className="text-3xl font-bold text-destructive mb-4">Product Not Found</h1>
+          <h1 className="text-3xl font-bold text-destructive mb-4">
+            {error || 'Product Not Found'}
+          </h1>
           <p className="text-xl text-muted-foreground mb-6">
             Sorry, we couldn't find the product you were looking for.
           </p>
@@ -115,7 +106,7 @@ export default function ProductDetailPage({ product: initialProduct }: { product
     );
   }
 
-  const relatedProducts = mockProducts.filter(p => p.category === product.category && p.id !== product.id).slice(0, 4);
+  const isStreamingProduct = product.productType === 'streaming' && product.videoUrl;
 
   return (
     <>
@@ -131,13 +122,13 @@ export default function ProductDetailPage({ product: initialProduct }: { product
           </Link>
         </Button>
 
-        {product.productType === 'streaming' && product.videoUrl ? (
-          <Card className="overflow-hidden shadow-xl rounded-lg">
-            <CardHeader className="p-6">
-              <p className="text-sm text-muted-foreground mb-1">{product.category}</p>
-              <CardTitle className="text-2xl lg:text-3xl font-bold text-foreground">{product.title}</CardTitle>
-            </CardHeader>
-            <CardContent className="p-6 pt-0">
+        <Card className="overflow-hidden shadow-xl rounded-lg">
+          <CardHeader className="p-6">
+            <p className="text-sm text-muted-foreground mb-1">{product.category}</p>
+            <CardTitle className="text-2xl lg:text-3xl font-bold text-foreground">{product.title}</CardTitle>
+          </CardHeader>
+          <CardContent className="p-6 pt-0">
+            {isStreamingProduct ? (
               <div className="aspect-video w-full bg-muted rounded-md overflow-hidden mb-6 shadow-inner">
                 <iframe
                   src={product.videoUrl}
@@ -148,25 +139,10 @@ export default function ProductDetailPage({ product: initialProduct }: { product
                   className="w-full h-full"
                 ></iframe>
               </div>
-              <CardDescription className="text-base text-foreground/80 mb-6">
-                {product.description}
-              </CardDescription>
-            </CardContent>
-            <CardFooter className="p-6 pt-0 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-              <p className="text-3xl font-bold text-primary self-center sm:self-auto">{product.price}</p>
-              <Button size="lg" className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground">
-                <PlayCircle className="mr-2 h-5 w-5" />
-                {product.category === 'Streaming' ? 'Watch Now' : 'Add to Cart'}
-              </Button>
-            </CardFooter>
-          </Card>
-        ) : (
-          // Standard Product Layout
-          <Card className="overflow-hidden shadow-xl rounded-lg">
-            <div className="grid md:grid-cols-2 gap-0 md:gap-6 lg:gap-12 items-start">
-              <div className="p-0 md:p-4">
-                <div className="aspect-square relative w-full overflow-hidden rounded-md md:rounded-lg">
-                  <Image
+            ) : (
+              product.imageUrl && (
+                <div className="aspect-square relative w-full overflow-hidden rounded-md md:rounded-lg mb-6 shadow-inner">
+                   <Image
                     src={product.imageUrl}
                     alt={product.title}
                     fill
@@ -174,68 +150,66 @@ export default function ProductDetailPage({ product: initialProduct }: { product
                     className="object-cover"
                     data-ai-hint={`${product.category} ${product.productType} product detail`}
                     priority={true}
+                    onError={(e) => { e.currentTarget.src = 'https://placehold.co/600x400.png?text=Image+Error'; e.currentTarget.srcset = '';}}
                   />
                 </div>
-              </div>
-              <div className="p-6 flex flex-col justify-between h-full">
-                <div>
-                  <p className="text-sm text-muted-foreground mb-1">{product.category}</p>
-                  <CardTitle className="text-2xl lg:text-3xl font-bold mb-3 text-foreground">{product.title}</CardTitle>
-                  <CardDescription className="text-base text-foreground/80 mb-6">
-                    {product.description}
-                  </CardDescription>
-                </div>
-                <CardFooter className="p-0 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mt-auto">
-                  <p className="text-3xl font-bold text-primary self-center sm:self-auto">{product.price}</p>
-                  <Button size="lg" className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground">
-                    <ShoppingCart className="mr-2 h-5 w-5" />
-                    Add to Cart
-                  </Button>
-                </CardFooter>
-              </div>
-            </div>
-          </Card>
-        )}
-
-        {relatedProducts.length > 0 && (
-          <div className="mt-12">
-            <h2 className="text-2xl font-bold mb-6 text-center md:text-left text-foreground">Related Products</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {relatedProducts.map(relatedProduct => (
-                 <Link key={relatedProduct.id} href={`/products/${relatedProduct.id}`} passHref legacyBehavior>
-                  <a className="block group">
-                    <Card className="h-full flex flex-col overflow-hidden transition-all duration-200 ease-in-out group-hover:shadow-xl group-hover:scale-[1.02] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg">
-                      <CardHeader className="p-0">
-                        <div className="aspect-video relative w-full overflow-hidden">
-                          <Image
-                            src={relatedProduct.imageUrl}
-                            alt={relatedProduct.title}
-                            fill
-                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-                            className="object-cover transition-transform duration-300 group-hover:scale-105"
-                            data-ai-hint={`${relatedProduct.category} ${relatedProduct.productType} product related`}
-                          />
-                        </div>
-                      </CardHeader>
-                      <CardContent className="p-4 flex-grow">
-                        <CardTitle className="text-md leading-tight mb-1 group-hover:text-primary transition-colors">
-                          {relatedProduct.title}
-                        </CardTitle>
-                         <p className="text-md font-semibold text-primary mt-1">{relatedProduct.price}</p>
-                      </CardContent>
-                       <CardFooter className="p-4 pt-0">
-                        <Button variant="outline" size="sm" className="w-full">
-                          View Product
-                        </Button>
-                      </CardFooter>
-                    </Card>
+              )
+            )}
+            <CardDescription className="text-base text-foreground/80 mb-6">
+              {product.description}
+            </CardDescription>
+          </CardContent>
+          <CardFooter className="p-6 pt-0 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+             {product.hotLink ? (
+                <Button size="lg" className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground" asChild>
+                  <a href={product.hotLink} target="_blank" rel="noopener noreferrer">
+                    {isStreamingProduct ? <PlayCircle className="mr-2 h-5 w-5" /> : <ImageIcon className="mr-2 h-5 w-5" />}
+                    {isStreamingProduct ? 'Watch Stream' : 'View Content'}
+                    <ExternalLink className="ml-2 h-4 w-4" />
                   </a>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
+                </Button>
+              ) : (
+                <p className="text-muted-foreground">No direct link available.</p>
+              )}
+          </CardFooter>
+        </Card>
       </div>
     </>
   );
+}
+
+// Required for dynamic routes with `output: 'export'` and client-side data fetching.
+// This tells Next.js that no specific paths are pre-rendered at build time.
+// The page will be a shell, and data fetched client-side.
+// If you know some paths you want to pre-render, you can list them here.
+export async function getStaticPaths() {
+  return {
+    paths: [], // No paths are pre-rendered
+    fallback: 'blocking', // Or false. 'blocking' will SSR on first request if page doesn't exist, then cache.
+                         // For pure static export with client-side fetch, 'false' might be better if you only rely on client nav.
+                         // However, direct URL access might 404 with 'false' if not pre-built.
+                         // Let's use 'blocking' to allow direct URL access to generate the shell if needed.
+                         // UPDATE: For `output: 'export'`, fallback must be `false` if paths are not fully known.
+                         // But if we are doing purely client-side fetching, we can return paths: [], fallback: false
+                         // and the client will fetch.
+                         // Given error "Internal Server Error", Next.js might still prefer explicit paths or fallback:false for export.
+                         // Let's try with fallback: false, and the client-side logic will handle it.
+  };
+}
+
+// Required if getStaticPaths is used.
+// This will be called at build time for paths from getStaticPaths,
+// or on first request if fallback: 'blocking' is used and path not pre-built.
+// For purely client-side fetched dynamic routes in an exported site, this can be minimal.
+export async function getStaticProps({ params }: { params: { id: string } }) {
+  // We don't fetch data here anymore for pre-rendering individual product pages by default
+  // The client-side useEffect will handle fetching.
+  // Return props, including the id, so the client can use it if needed,
+  // although router.query.id is the primary source.
+  return {
+    props: {
+      // No product data passed from here for client-side fetching strategy
+      // id: params.id, // can be useful for the component
+    },
+  };
 }
