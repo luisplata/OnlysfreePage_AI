@@ -32,11 +32,16 @@ export default function HomePage() {
     async function fetchProducts() {
       setLoading(true);
       setError(null);
+      
+      const isDevelopment = process.env.NODE_ENV === 'development';
+      const baseUrl = isDevelopment ? '/api-proxy' : 'https://test.onlysfree.com/api';
+      const apiUrl = `${baseUrl}/packs`;
+
       try {
-        // Use the absolute API URL for static export compatibility
-        const response = await fetch('https://test.onlysfree.com/api/packs');
+        const response = await fetch(apiUrl);
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}, message: ${await response.text()}`);
+          const errorText = await response.text();
+          throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
         }
         const data: ApiPackListResponse = await response.json();
         if (data && data.data) {
@@ -46,7 +51,11 @@ export default function HomePage() {
         }
       } catch (e: any) {
         console.error("Failed to fetch products:", e);
-        setError(e.message || 'Failed to load products. Check browser console for more details.');
+        let errorMessage = e.message || 'Failed to load products. Check browser console for more details.';
+        if (e.message && e.message.includes('Failed to fetch') && !isDevelopment) {
+            errorMessage += ' This might be a CORS issue if the API server (https://test.onlysfree.com) is not configured to allow requests from this domain.';
+        }
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }
@@ -67,11 +76,10 @@ export default function HomePage() {
     return (
       <div className="container mx-auto py-8 text-center">
         <h1 className="text-3xl font-bold text-destructive mb-4">Error Loading Products</h1>
-        <p className="text-xl text-muted-foreground">{error}</p>
+        <p className="text-xl text-muted-foreground whitespace-pre-wrap">{error}</p>
         <p className="text-sm text-muted-foreground mt-2">
-          This might be due to a network issue or the API server not responding. 
-          Please check your internet connection and ensure the API at https://test.onlysfree.com is accessible.
-          CORS issues might also occur if the API server is not configured to allow requests from this domain.
+          Please check your internet connection and ensure the API server is accessible.
+          If running a static export, ensure the API server (https://test.onlysfree.com) has CORS configured correctly.
         </p>
       </div>
     );
