@@ -6,8 +6,8 @@ export interface ApiPack {
   id: number;
   nombre: string;
   imagen: string;
-  NombreLink: string; 
-  hotLink: string;    
+  NombreLink: string;
+  hotLink: string;
   isVideo: string; // "0", "1", or ""
   url_video: string;  // Video URL if isVideo is "1" for /api/packs
   tags: string;
@@ -21,13 +21,27 @@ export interface ApiPpvItem {
   imagen: string;
   url: string; // This is the direct streaming link for PPV, used for iframe
   tags: string;
-  // Fields like estado, publication_date, created_at, updated_at are available
-  // but not directly used in the Product interface for now.
   created_at?: string;
   updated_at?: string;
   estado?: string;
   publication_date?: string;
 }
+
+// Interface for items from /api/hot
+export interface ApiHotItem {
+  id: number; // This seems to be the pack/model ID
+  nombre: string;
+  imagen: string;
+  NombreLink: string;
+  hotLink: string;
+  isVideo: string; // "0", "1", or ""
+  url_video: string;
+  tags: string;
+  visita: string; // Number of visits as a string
+  idoAlPack: string; // Number of clicks to pack as a string
+  producto_id: string; // This seems to be the actual product ID for linking.
+}
+
 
 // Generic Product interface to be used in the UI
 export interface Product {
@@ -56,7 +70,6 @@ export interface ApiPackListResponse {
 }
 
 // API response for a single model/pack detail from /api/model/[id]
-// This reuses ApiPack and adds visitas if present.
 export type ApiModelDetailResponse = ApiPack;
 
 // API response for the list of PPV items from /api/ppv
@@ -67,5 +80,7 @@ export interface ApiPpvListResponse {
 }
 
 // API response for a single PPV item detail from /api/ppv/[id]
-// This structure is identical to ApiPpvItem.
 export type ApiPpvDetailResponse = ApiPpvItem;
+
+// API response for /api/hot is a direct array of ApiHotItem
+export type ApiHotListResponse = ApiHotItem[];

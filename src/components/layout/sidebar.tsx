@@ -2,8 +2,9 @@
 "use client";
 
 import Link from 'next/link';
-import { useRouter } from 'next/router'; // Corrected for Pages Router
+import { useRouter } from 'next/router';
 import Image from 'next/image';
+import * as React from 'react'; // Import React for useState and useEffect
 
 import {
   Sidebar,
@@ -13,11 +14,33 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarFooter,
-  SidebarSeparator, // Added for visual separation
+  SidebarSeparator,
+  SidebarGroup,
+  SidebarGroupLabel,
 } from '@/components/ui/sidebar';
 import { VentaRapidaLogo } from '@/components/icons';
-import { saleCategories } from '@/data/mock-data'; // For the Streamings card config
-import { LogOut } from 'lucide-react';
+import { saleCategories } from '@/data/mock-data';
+import { LogOut, Loader2 } from 'lucide-react';
+import type { Product, ApiHotItem, ApiHotListResponse } from '@/types';
+
+
+// Helper function to transform API Hot item data to Product type
+function transformApiHotItemToProduct(apiHotItem: ApiHotItem): Product {
+  const description = apiHotItem.tags || 'No description available.';
+  const category = apiHotItem.tags ? apiHotItem.tags.split('-')[0].trim().toLowerCase() || 'general' : 'general';
+
+  return {
+    id: String(apiHotItem.producto_id || apiHotItem.id), // Prefer producto_id if available for linking
+    title: apiHotItem.nombre,
+    description: description,
+    imageUrl: apiHotItem.imagen,
+    category: category,
+    productType: apiHotItem.isVideo === "1" || (apiHotItem.url_video && apiHotItem.url_video !== "") ? 'streaming' : 'standard',
+    videoUrl: apiHotItem.url_video || undefined,
+    hotLink: apiHotItem.hotLink,
+  };
+}
+
 
 export function SaleCategorySidebar() {
   const router = useRouter();
@@ -27,6 +50,51 @@ export function SaleCategorySidebar() {
 
   const publicityImageUrl = "https://test.onlysfree.com/api/publicity/image/game";
   const publicityLinkUrl = "https://test.onlysfree.com/publicity/game";
+
+  const [hotOffers, setHotOffers] = React.useState<Product[]>([]);
+  const [loadingHotOffers, setLoadingHotOffers] = React.useState(true);
+  const [errorHotOffers, setErrorHotOffers] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    async function fetchHotOffers() {
+      setLoadingHotOffers(true);
+      setErrorHotOffers(null);
+      
+      const isDevelopment = process.env.NODE_ENV === 'development';
+      const baseUrl = isDevelopment ? '/api-proxy' : 'https://test.onlysfree.com/api';
+      const apiUrl = `${baseUrl}/hot`;
+
+      try {
+        const response = await fetch(apiUrl);
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+        }
+        // The /api/hot endpoint returns an array directly
+        const data: ApiHotListResponse = await response.json(); 
+        if (Array.isArray(data)) {
+          setHotOffers(data.map(transformApiHotItemToProduct));
+        } else {
+          throw new Error('API response for hot offers did not contain an array.');
+        }
+      } catch (e: any) {
+        console.error("Failed to fetch hot offers:", e);
+        let errorMessage = e.message || 'Failed to load hot offers.';
+        if (e.message && e.message.includes('Failed to fetch')) {
+            if (isDevelopment) {
+                errorMessage = `Hot Offers: Network error or proxy issue. Details: ${e.message}`;
+            } else {
+                errorMessage = `Hot Offers: Network error or CORS issue. Ensure API server allows requests. Details: ${e.message}`;
+            }
+        }
+        setErrorHotOffers(errorMessage);
+      } finally {
+        setLoadingHotOffers(false);
+      }
+    }
+    fetchHotOffers();
+  }, []);
+
 
   return (
     <Sidebar collapsible="icon">
@@ -88,6 +156,66 @@ export function SaleCategorySidebar() {
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
+
+          <SidebarSeparator className="my-3" />
+
+          {/* Hot Offers Section */}
+          <SidebarGroup>
+            <SidebarGroupLabel className="mb-1 px-2 text-sidebar-foreground/90 group-data-[collapsible=icon]:sr-only">Hot Offers</SidebarGroupLabel>
+            <SidebarMenu>
+              {loadingHotOffers && (
+                <SidebarMenuItem className="group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center">
+                  <Loader2 className="h-5 w-5 animate-spin text-sidebar-foreground/70 group-data-[collapsible=expanded]:ml-2" />
+                   <span className="ml-2 text-xs text-sidebar-foreground/70 group-data-[collapsible=icon]:hidden">Loading offers...</span>
+                </SidebarMenuItem>
+              )}
+              {errorHotOffers && !loadingHotOffers && (
+                 <SidebarMenuItem className="px-2 text-xs text-destructive group-data-[collapsible=icon]:hidden">
+                   {errorHotOffers}
+                 </SidebarMenuItem>
+              )}
+              {!loadingHotOffers && !errorHotOffers && hotOffers.length === 0 && (
+                <SidebarMenuItem className="px-2 text-xs text-sidebar-foreground/70 group-data-[collapsible=icon]:hidden">
+                  No hot offers available.
+                </SidebarMenuItem>
+              )}
+              {!loadingHotOffers && !errorHotOffers && hotOffers.map((product) => {
+                const detailPageUrl = `/products/detail?id=${product.id}${product.productType === 'streaming' ? '&type=streaming' : ''}`;
+                return (
+                  <SidebarMenuItem key={product.id}>
+                    <SidebarMenuButton
+                      asChild
+                      tooltip={{
+                        content: product.title,
+                        className: "max-w-[200px] text-center",
+                      }}
+                      className="h-auto py-1.5 px-2 text-left group-data-[collapsible=icon]:p-1.5 group-data-[collapsible=icon]:w-full group-data-[collapsible=icon]:h-auto focus-visible:ring-inset"
+                    >
+                      <Link href={detailPageUrl} className="flex items-center gap-2 w-full">
+                        <div className="w-8 h-8 rounded-sm overflow-hidden relative shrink-0 group-data-[collapsible=icon]:w-6 group-data-[collapsible=icon]:h-6">
+                          <Image
+                            src={product.imageUrl || 'https://placehold.co/40x40.png'}
+                            alt={product.title}
+                            fill={true}
+                            sizes="40px"
+                            className="object-cover"
+                            data-ai-hint="product offer"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'https://placehold.co/40x40.png?text=Error';
+                              (e.target as HTMLImageElement).srcset = '';
+                            }}
+                          />
+                        </div>
+                        <span className="text-xs font-medium line-clamp-2 leading-tight group-data-[collapsible=icon]:hidden">
+                          {product.title}
+                        </span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroup>
 
         </SidebarMenu>
       </SidebarContent>
