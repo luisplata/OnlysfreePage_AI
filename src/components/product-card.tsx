@@ -19,6 +19,7 @@ interface ProductCardProps {
 
 export function ProductCard({ product }: ProductCardProps) {
   const Icon = product.productType === 'streaming' ? Film : Eye;
+  // Ensure the detail page URL is correctly formatted
   const detailPageUrl = `/products/detail?id=${product.id}`;
 
   return (
@@ -34,16 +35,20 @@ export function ProductCard({ product }: ProductCardProps) {
                   fill
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                   className="object-cover transition-transform duration-300 group-hover:scale-105"
-                  data-ai-hint={`${product.category} ${product.productType}`}
+                  data-ai-hint={`${product.category} ${product.productType === 'streaming' ? 'video stream' : 'product'}`}
                   onError={(e) => {
                     // Type assertion to satisfy TS for src property
-                    (e.target as HTMLImageElement).src = 'https://placehold.co/600x400.png?text=Image+Not+Found';
+                    (e.target as HTMLImageElement).src = `https://placehold.co/600x400.png?text=${encodeURIComponent(product.title + '\\nImage Not Found')}`;
                     (e.target as HTMLImageElement).srcset = '';
                   }}
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
-                  <span className="text-muted-foreground">No Image</span>
+                  {product.productType === 'streaming' ? (
+                    <Film className="h-16 w-16 text-muted-foreground opacity-50" />
+                  ): (
+                    <span className="text-muted-foreground">No Image</span>
+                  )}
                 </div>
               )}
               {product.productType === 'streaming' && (
