@@ -27,19 +27,19 @@ export interface ApiPpvItem {
   publication_date?: string;
 }
 
-// Interface for items from /api/hot
-export interface ApiHotItem {
-  id: number; // This seems to be the pack/model ID
+// Interface for items from /api/hot and /api/popular
+export interface ApiHotItem { // Also used for Popular items as structure is similar
+  id: number; 
   nombre: string;
   imagen: string;
   NombreLink: string;
   hotLink: string;
   isVideo: string; // "0", "1", or ""
-  url_video: string;
+  url_video: string | null;
   tags: string;
-  visita: string; // Number of visits as a string
-  idoAlPack: string; // Number of clicks to pack as a string
-  producto_id: string; // This seems to be the actual product ID for linking.
+  visita?: string; // Number of visits as a string (in /hot)
+  idoAlPack?: string; // Number of clicks to pack as a string (in /hot)
+  producto_id: string; // Actual product ID for linking.
 }
 
 
@@ -70,7 +70,7 @@ export interface ApiPackListResponse {
 }
 
 // API response for a single model/pack detail from /api/model/[id]
-export type ApiModelDetailResponse = ApiPack;
+export type ApiModelDetailResponse = ApiPack; // Structure is the same as ApiPack
 
 // API response for the list of PPV items from /api/ppv
 export interface ApiPpvListResponse {
@@ -82,5 +82,16 @@ export interface ApiPpvListResponse {
 // API response for a single PPV item detail from /api/ppv/[id]
 export type ApiPpvDetailResponse = ApiPpvItem;
 
-// API response for /api/hot is a direct array of ApiHotItem
-export type ApiHotListResponse = ApiHotItem[];
+// API response for /api/hot and /api/popular is a direct array of ApiHotItem
+export type ApiHotListResponse = ApiHotItem[]; // Also for /api/popular
+
+// API response for /api/tags
+export interface ApiTagsResponse {
+  [key: string]: string; // e.g., "0": "onlyfans", "218": "creeplifeenc"
+}
+
+// Processed Tag structure for UI
+export interface Tag {
+  id: string;
+  name: string;
+}

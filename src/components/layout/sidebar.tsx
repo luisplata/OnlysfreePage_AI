@@ -2,9 +2,9 @@
 "use client";
 
 import Link from 'next/link';
-import { useRouter } from 'next/router'; // Correct hook for Pages Router
+import { useRouter } from 'next/router';
 import Image from 'next/image';
-import * as React from 'react'; // Import React for useState and useEffect
+import * as React from 'react';
 
 import {
   Sidebar,
@@ -18,10 +18,11 @@ import {
   SidebarGroup,
   SidebarGroupLabel,
 } from '@/components/ui/sidebar';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { VentaRapidaLogo } from '@/components/icons';
 import { saleCategories } from '@/data/mock-data';
-import { LogOut, Loader2 } from 'lucide-react';
-import type { Product, ApiHotItem, ApiHotListResponse } from '@/types';
+import { Loader2, Tag as TagIcon } from 'lucide-react'; // Renamed Tag from lucide-react to TagIcon to avoid conflict
+import type { Product, ApiHotItem, ApiHotListResponse, ApiTagsResponse, Tag } from '@/types';
 
 
 // Helper function to transform API Hot/Popular item data to Product type
@@ -39,6 +40,13 @@ function transformApiHotItemToProduct(apiHotItem: ApiHotItem): Product {
     videoUrl: apiHotItem.url_video || undefined,
     hotLink: apiHotItem.hotLink,
   };
+}
+
+function transformApiTagsResponseToArray(apiTags: ApiTagsResponse): Tag[] {
+  return Object.entries(apiTags)
+    .map(([id, name]) => ({ id, name }))
+    .filter(tag => tag.name && tag.name.trim() !== "") // Filter out tags with empty names
+    .sort((a, b) => a.name.localeCompare(b.name)); // Sort tags alphabetically
 }
 
 
@@ -59,11 +67,14 @@ export function SaleCategorySidebar() {
   const [loadingPopularOffers, setLoadingPopularOffers] = React.useState(true);
   const [errorPopularOffers, setErrorPopularOffers] = React.useState<string | null>(null);
 
+  const [tags, setTags] = React.useState<Tag[]>([]);
+  const [loadingTags, setLoadingTags] = React.useState(true);
+  const [errorTags, setErrorTags] = React.useState<string | null>(null);
+
   React.useEffect(() => {
     async function fetchHotOffers() {
       setLoadingHotOffers(true);
       setErrorHotOffers(null);
-      
       const isDevelopment = process.env.NODE_ENV === 'development';
       const baseUrl = isDevelopment ? '/api-proxy' : 'https://test.onlysfree.com/api';
       const apiUrl = `${baseUrl}/hot`;
@@ -74,7 +85,7 @@ export function SaleCategorySidebar() {
           const errorText = await response.text();
           throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
         }
-        const data: ApiHotListResponse = await response.json(); 
+        const data: ApiHotListResponse = await response.json();
         if (Array.isArray(data)) {
           setHotOffers(data.map(transformApiHotItemToProduct));
         } else {
@@ -84,11 +95,7 @@ export function SaleCategorySidebar() {
         console.error("Failed to fetch hot offers:", e);
         let errorMessage = e.message || 'Failed to load hot offers.';
         if (e.message && e.message.includes('Failed to fetch')) {
-            if (isDevelopment) {
-                errorMessage = `Hot Offers: Network error or proxy issue. Details: ${e.message}`;
-            } else {
-                errorMessage = `Hot Offers: Network error or CORS issue. Ensure API server allows requests. Details: ${e.message}`;
-            }
+          errorMessage = `Hot Offers: Network error. Details: ${e.message}`;
         }
         setErrorHotOffers(errorMessage);
       } finally {
@@ -102,7 +109,6 @@ export function SaleCategorySidebar() {
     async function fetchPopularOffers() {
       setLoadingPopularOffers(true);
       setErrorPopularOffers(null);
-      
       const isDevelopment = process.env.NODE_ENV === 'development';
       const baseUrl = isDevelopment ? '/api-proxy' : 'https://test.onlysfree.com/api';
       const apiUrl = `${baseUrl}/popular`;
@@ -113,8 +119,7 @@ export function SaleCategorySidebar() {
           const errorText = await response.text();
           throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
         }
-        // Assuming /api/popular also returns an array directly like /api/hot
-        const data: ApiHotListResponse = await response.json(); 
+        const data: ApiHotListResponse = await response.json();
         if (Array.isArray(data)) {
           setPopularOffers(data.map(transformApiHotItemToProduct));
         } else {
@@ -124,11 +129,7 @@ export function SaleCategorySidebar() {
         console.error("Failed to fetch popular offers:", e);
         let errorMessage = e.message || 'Failed to load popular offers.';
         if (e.message && e.message.includes('Failed to fetch')) {
-            if (isDevelopment) {
-                errorMessage = `Popular Offers: Network error or proxy issue. Details: ${e.message}`;
-            } else {
-                errorMessage = `Popular Offers: Network error or CORS issue. Ensure API server allows requests. Details: ${e.message}`;
-            }
+          errorMessage = `Popular Offers: Network error. Details: ${e.message}`;
         }
         setErrorPopularOffers(errorMessage);
       } finally {
@@ -136,6 +137,36 @@ export function SaleCategorySidebar() {
       }
     }
     fetchPopularOffers();
+  }, []);
+
+  React.useEffect(() => {
+    async function fetchTags() {
+      setLoadingTags(true);
+      setErrorTags(null);
+      const isDevelopment = process.env.NODE_ENV === 'development';
+      const baseUrl = isDevelopment ? '/api-proxy' : 'https://test.onlysfree.com/api';
+      const apiUrl = `${baseUrl}/tags`;
+
+      try {
+        const response = await fetch(apiUrl);
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+        }
+        const data: ApiTagsResponse = await response.json();
+        setTags(transformApiTagsResponseToArray(data));
+      } catch (e: any) {
+        console.error("Failed to fetch tags:", e);
+        let errorMessage = e.message || 'Failed to load tags.';
+        if (e.message && e.message.includes('Failed to fetch')) {
+            errorMessage = `Tags: Network error. Details: ${e.message}`;
+        }
+        setErrorTags(errorMessage);
+      } finally {
+        setLoadingTags(false);
+      }
+    }
+    fetchTags();
   }, []);
 
 
@@ -302,9 +333,8 @@ export function SaleCategorySidebar() {
                             fill={true}
                             sizes="40px"
                             className="object-cover"
-                            data-ai-hint="popular product" // Slightly different hint
+                            data-ai-hint="popular product"
                             onError={(e) => {
-                              // If image is mp4, next/image will fail. Show a generic placeholder.
                               if (product.imageUrl && product.imageUrl.endsWith('.mp4')) {
                                 (e.target as HTMLImageElement).src = 'https://placehold.co/40x40.png?text=Video';
                               } else {
@@ -325,13 +355,64 @@ export function SaleCategorySidebar() {
             </SidebarMenu>
           </SidebarGroup>
 
+          <SidebarSeparator className="my-3" />
+
+          {/* Tags Section */}
+          <SidebarGroup>
+            <SidebarGroupLabel className="mb-1 px-2 text-sidebar-foreground/90 group-data-[collapsible=icon]:sr-only">Tags</SidebarGroupLabel>
+            <ScrollArea className="h-[200px] group-data-[collapsible=icon]:hidden"> {/* Adjust height as needed */}
+              <SidebarMenu className="pr-2 py-1"> {/* Padding for scrollbar */}
+                {loadingTags && (
+                  <SidebarMenuItem className="group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center">
+                    <Loader2 className="h-5 w-5 animate-spin text-sidebar-foreground/70 group-data-[collapsible=expanded]:ml-2" />
+                    <span className="ml-2 text-xs text-sidebar-foreground/70 group-data-[collapsible=icon]:hidden">Loading tags...</span>
+                  </SidebarMenuItem>
+                )}
+                {errorTags && !loadingTags && (
+                  <SidebarMenuItem className="px-2 text-xs text-destructive group-data-[collapsible=icon]:hidden">
+                    {errorTags}
+                  </SidebarMenuItem>
+                )}
+                {!loadingTags && !errorTags && tags.length === 0 && (
+                  <SidebarMenuItem className="px-2 text-xs text-sidebar-foreground/70 group-data-[collapsible=icon]:hidden">
+                    No tags available.
+                  </SidebarMenuItem>
+                )}
+                {!loadingTags && !errorTags && tags.map((tag) => (
+                  <SidebarMenuItem key={`tag-${tag.id}`}>
+                    <SidebarMenuButton
+                      // For now, tags don't navigate. Replace with Link if navigation is needed.
+                      // asChild
+                      tooltip={{
+                        content: tag.name,
+                        className: "max-w-[200px] text-center",
+                      }}
+                      className="h-auto py-1 px-2 text-left text-xs group-data-[collapsible=icon]:p-1.5 group-data-[collapsible=icon]:w-full group-data-[collapsible=icon]:h-auto focus-visible:ring-inset"
+                      // onClick={() => console.log("Tag clicked:", tag.name)} // Placeholder action
+                    >
+                      {/* <TagIcon className="mr-2 h-3 w-3 text-sidebar-foreground/80" /> */}
+                      <span className="truncate group-data-[collapsible=icon]:hidden">
+                        {tag.name}
+                      </span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </ScrollArea>
+             {/* Tooltip for "Tags" when collapsed */}
+            <SidebarMenu className="group-data-[collapsible=expanded]:hidden">
+                <SidebarMenuItem>
+                    <SidebarMenuButton tooltip="Tags" className="justify-center">
+                        <TagIcon className="h-5 w-5" />
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroup>
+
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter className="p-2">
-         <SidebarMenuButton tooltip="Logout">
-            <LogOut />
-            <span>Logout</span>
-          </SidebarMenuButton>
+         {/* Footer can be empty or used for other elements later */}
       </SidebarFooter>
     </Sidebar>
   );
