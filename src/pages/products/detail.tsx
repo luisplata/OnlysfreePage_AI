@@ -61,7 +61,7 @@ export default function ProductDetailPage() {
       const currentId = typeof id === 'string' ? id : undefined;
       if (!currentId) {
         setLoading(false);
-        setError("Product ID is missing.");
+        // setError("Product ID is missing in URL query parameters."); // Less aggressive error for initial render
         return;
       }
 
@@ -69,15 +69,15 @@ export default function ProductDetailPage() {
       setError(null);
       
       const isDevelopment = process.env.NODE_ENV === 'development';
-      let apiBaseUrl = isDevelopment ? '/api-proxy' : 'https://test.onlysfree.com/api';
+      let apiBaseUrlPart = isDevelopment ? '/api-proxy' : 'https://test.onlysfree.com/api';
       
       let apiUrl = '';
       let isStreamingTypeFromQuery = productTypeParam === 'streaming';
 
       if (isStreamingTypeFromQuery) {
-        apiUrl = `${apiBaseUrl}/ppv/${currentId}`;
+        apiUrl = `${apiBaseUrlPart}/ppv/${currentId}`;
       } else {
-        apiUrl = `${apiBaseUrl}/model/${currentId}`;
+        apiUrl = `${apiBaseUrlPart}/model/${currentId}`;
       }
 
       try {
@@ -115,8 +115,11 @@ export default function ProductDetailPage() {
       }
     }
 
-    if (router.isReady) {
+    if (router.isReady && id) { // Ensure router is ready AND id is present
         fetchProductDetails();
+    } else if (router.isReady && !id) {
+        setLoading(false);
+        setError("Product ID is missing from URL.");
     }
   }, [id, productTypeParam, router.isReady]);
 
@@ -260,19 +263,4 @@ export default function ProductDetailPage() {
       </div>
     </>
   );
-}
-
-// Minimal getStaticPaths and getStaticProps if not pre-rendering specific paths
-export async function getStaticPaths() {
-  return {
-    paths: [], // No paths are pre-rendered; all rendering is client-side or on-demand
-    fallback: 'blocking', // or true if you want to show a fallback UI during generation
-  };
-}
-
-export async function getStaticProps() {
-  // Props will be filled by client-side fetching
-  return {
-    props: {},
-  };
 }
