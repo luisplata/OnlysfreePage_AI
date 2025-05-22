@@ -19,8 +19,12 @@ interface ProductCardProps {
 
 export function ProductCard({ product }: ProductCardProps) {
   const Icon = product.productType === 'streaming' ? Film : Eye;
+  
   // Ensure the detail page URL is correctly formatted
-  const detailPageUrl = `/products/detail?id=${product.id}`;
+  let detailPageUrl = `/products/detail?id=${product.id}`;
+  if (product.productType === 'streaming') {
+    detailPageUrl += '&type=streaming'; // Add type parameter for streaming products
+  }
 
   return (
     <Link href={detailPageUrl} passHref legacyBehavior>
@@ -35,7 +39,7 @@ export function ProductCard({ product }: ProductCardProps) {
                   fill
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                   className="object-cover transition-transform duration-300 group-hover:scale-105"
-                  data-ai-hint={`${product.category} ${product.productType === 'streaming' ? 'video stream' : 'product'}`}
+                  data-ai-hint={`${product.category} ${product.productType === 'streaming' ? 'video stream' : 'product item'}`}
                   onError={(e) => {
                     // Type assertion to satisfy TS for src property
                     (e.target as HTMLImageElement).src = `https://placehold.co/600x400.png?text=${encodeURIComponent(product.title + '\\nImage Not Found')}`;
