@@ -60,10 +60,12 @@ function shuffleArray<T>(array: T[]): T[] {
   return newArray;
 }
 
+const TAG_DISPLAY_COUNT = 10;
+const TAG_REFRESH_INTERVAL = 20000; // 20 seconds
 
 export function SaleCategorySidebar() {
   const router = useRouter();
-  const { pathname } = router; // Use router from next/router for Pages Router
+  const { pathname } = router; 
 
   const streamingsCategory = saleCategories.find(cat => cat.id === 'streamings');
 
@@ -78,7 +80,8 @@ export function SaleCategorySidebar() {
   const [loadingPopularOffers, setLoadingPopularOffers] = React.useState(true);
   const [errorPopularOffers, setErrorPopularOffers] = React.useState<string | null>(null);
 
-  const [tags, setTags] = React.useState<Tag[]>([]);
+  const [allFetchedTags, setAllFetchedTags] = React.useState<Tag[]>([]);
+  const [displayedTags, setDisplayedTags] = React.useState<Tag[]>([]);
   const [loadingTags, setLoadingTags] = React.useState(true);
   const [errorTags, setErrorTags] = React.useState<string | null>(null);
 
@@ -151,7 +154,7 @@ export function SaleCategorySidebar() {
   }, []);
 
   React.useEffect(() => {
-    async function fetchTags() {
+    async function fetchAllTags() {
       setLoadingTags(true);
       setErrorTags(null);
       const isDevelopment = process.env.NODE_ENV === 'development';
@@ -165,23 +168,43 @@ export function SaleCategorySidebar() {
           throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
         }
         const data: ApiTagsResponse = await response.json();
-        const allTags = transformApiTagsResponseToArray(data);
-        const shuffledTags = shuffleArray(allTags);
-        setTags(shuffledTags.slice(0, 10)); // Get first 10 random tags
-      } catch (e: any)
-      {
+        const allTagsData = transformApiTagsResponseToArray(data);
+        setAllFetchedTags(allTagsData);
+        if (allTagsData.length > 0) {
+          const shuffled = shuffleArray(allTagsData);
+          setDisplayedTags(shuffled.slice(0, TAG_DISPLAY_COUNT));
+        } else {
+          setDisplayedTags([]);
+        }
+      } catch (e: any) {
         console.error("Failed to fetch tags:", e);
         let errorMessage = e.message || 'Failed to load tags.';
         if (e.message && e.message.includes('Failed to fetch')) {
             errorMessage = `Tags: Network error. Details: ${e.message}`;
         }
         setErrorTags(errorMessage);
+        setAllFetchedTags([]);
+        setDisplayedTags([]);
       } finally {
         setLoadingTags(false);
       }
     }
-    fetchTags();
+    fetchAllTags();
   }, []);
+
+  React.useEffect(() => {
+    if (loadingTags || errorTags || allFetchedTags.length <= TAG_DISPLAY_COUNT) {
+      // Don't start interval if still loading, there's an error, or not enough tags to rotate
+      return;
+    }
+
+    const intervalId = setInterval(() => {
+      const shuffled = shuffleArray([...allFetchedTags]); // Shuffle a copy
+      setDisplayedTags(shuffled.slice(0, TAG_DISPLAY_COUNT));
+    }, TAG_REFRESH_INTERVAL);
+
+    return () => clearInterval(intervalId); // Cleanup interval
+  }, [allFetchedTags, loadingTags, errorTags]);
 
 
   return (
@@ -195,26 +218,26 @@ export function SaleCategorySidebar() {
         <SidebarMenu>
           {streamingsCategory && (
             <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={pathname === streamingsCategory.href}
-                tooltip={streamingsCategory.name}
-                className="h-auto p-2 flex flex-col items-center justify-center text-center group-data-[collapsible=icon]:p-1 group-data-[collapsible=icon]:w-full group-data-[collapsible=icon]:h-auto focus-visible:ring-inset"
-              >
-                <Link href={streamingsCategory.href || '/'}>
-                  <div className="w-full aspect-[16/9] rounded-md overflow-hidden group-data-[collapsible=icon]:w-7 group-data-[collapsible=icon]:h-7 group-data-[collapsible=icon]:aspect-square relative">
-                    <Image
-                      src="https://placehold.co/200x112.png"
-                      alt={streamingsCategory.name}
-                      fill={true}
-                      sizes="(max-width: 256px) 100vw, 200px"
-                      className="object-cover transition-transform duration-300 group-hover:scale-105"
-                      data-ai-hint="streaming entertainment"
-                    />
-                  </div>
-                  <span className="mt-1 text-xs font-medium group-data-[collapsible=icon]:hidden">{streamingsCategory.name}</span>
-                </Link>
-              </SidebarMenuButton>
+                <SidebarMenuButton
+                    asChild
+                    isActive={pathname === streamingsCategory.href}
+                    tooltip={streamingsCategory.name}
+                    className="h-auto p-2 flex flex-col items-center justify-center text-center group-data-[collapsible=icon]:p-1 group-data-[collapsible=icon]:w-full group-data-[collapsible=icon]:h-auto focus-visible:ring-inset"
+                >
+                    <Link href={streamingsCategory.href || '/'}>
+                        <div className="w-full aspect-[16/9] rounded-md overflow-hidden group-data-[collapsible=icon]:w-7 group-data-[collapsible=icon]:h-7 group-data-[collapsible=icon]:aspect-square relative">
+                        <Image
+                            src="https://placehold.co/200x112.png"
+                            alt={streamingsCategory.name}
+                            fill={true}
+                            sizes="(max-width: 256px) 100vw, 200px"
+                            className="object-cover transition-transform duration-300 group-hover:scale-105"
+                            data-ai-hint="streaming entertainment"
+                        />
+                        </div>
+                        <span className="mt-1 text-xs font-medium group-data-[collapsible=icon]:hidden">{streamingsCategory.name}</span>
+                    </Link>
+                </SidebarMenuButton>
             </SidebarMenuItem>
           )}
 
@@ -385,10 +408,10 @@ export function SaleCategorySidebar() {
                 {errorTags && !loadingTags && (
                   <p className="px-2 text-xs text-destructive w-full">{errorTags}</p>
                 )}
-                {!loadingTags && !errorTags && tags.length === 0 && (
+                {!loadingTags && !errorTags && displayedTags.length === 0 && (
                   <p className="px-2 text-xs text-sidebar-foreground/70 w-full">No tags available.</p>
                 )}
-                {!loadingTags && !errorTags && tags.map((tag) => (
+                {!loadingTags && !errorTags && displayedTags.map((tag) => (
                   <Badge
                     key={`tag-${tag.id}`}
                     variant="secondary"
@@ -406,8 +429,10 @@ export function SaleCategorySidebar() {
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter className="p-2">
-         {/* Footer can be empty or used for other elements later */}
+         {/* Footer is empty */}
       </SidebarFooter>
     </Sidebar>
   );
 }
+
+
