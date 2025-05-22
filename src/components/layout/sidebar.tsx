@@ -2,7 +2,7 @@
 "use client";
 
 import Link from 'next/link';
-import { useRouter } from 'next/router';
+import { useRouter } from 'next/router'; // Corrected import for Pages Router
 import Image from 'next/image';
 import * as React from 'react';
 
@@ -22,7 +22,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { VentaRapidaLogo } from '@/components/icons';
 import { saleCategories } from '@/data/mock-data';
 import { Loader2, Tag as TagIcon } from 'lucide-react';
-import type { Product, ApiHotItem, ApiHotListResponse, ApiTagsResponse, Tag } from '@/types';
+import type { Product, ApiHotItem, ApiHotListResponse, ApiTagsResponse, Tag, ApiPpvItem, ApiPack } from '@/types';
+import { Badge } from '@/components/ui/badge';
 
 
 // Helper function to transform API Hot/Popular item data to Product type
@@ -193,13 +194,13 @@ export function SaleCategorySidebar() {
         <SidebarMenu>
           {streamingsCategory && (
             <SidebarMenuItem>
-              <SidebarMenuButton
+               <SidebarMenuButton
                 asChild
                 isActive={pathname === streamingsCategory.href}
                 tooltip={streamingsCategory.name}
                 className="h-auto p-2 flex flex-col items-center justify-center text-center group-data-[collapsible=icon]:p-1 group-data-[collapsible=icon]:w-full group-data-[collapsible=icon]:h-auto focus-visible:ring-inset"
               >
-                <Link href={streamingsCategory.href}>
+                <Link href={streamingsCategory.href || '/'}>
                   <div className="w-full aspect-[16/9] rounded-md overflow-hidden group-data-[collapsible=icon]:w-7 group-data-[collapsible=icon]:h-7 group-data-[collapsible=icon]:aspect-square relative">
                     <Image
                       src="https://placehold.co/200x112.png"
@@ -373,42 +374,32 @@ export function SaleCategorySidebar() {
           <SidebarGroup>
             <SidebarGroupLabel className="mb-1 px-2 text-sidebar-foreground/90 group-data-[collapsible=icon]:sr-only">Tags</SidebarGroupLabel>
             <ScrollArea className="h-[200px] group-data-[collapsible=icon]:hidden">
-              <SidebarMenu className="pr-2 py-1">
+               <div className="flex flex-wrap p-1 group-data-[collapsible=icon]:hidden">
                 {loadingTags && (
-                  <SidebarMenuItem className="group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center">
-                    <Loader2 className="h-5 w-5 animate-spin text-sidebar-foreground/70 group-data-[collapsible=expanded]:ml-2" />
-                    <span className="ml-2 text-xs text-sidebar-foreground/70 group-data-[collapsible=icon]:hidden">Loading tags...</span>
-                  </SidebarMenuItem>
+                  <div className="w-full flex items-center justify-center p-2">
+                    <Loader2 className="h-5 w-5 animate-spin text-sidebar-foreground/70" />
+                    <span className="ml-2 text-xs text-sidebar-foreground/70">Loading tags...</span>
+                  </div>
                 )}
                 {errorTags && !loadingTags && (
-                  <SidebarMenuItem className="px-2 text-xs text-destructive group-data-[collapsible=icon]:hidden">
-                    {errorTags}
-                  </SidebarMenuItem>
+                  <p className="px-2 text-xs text-destructive w-full">{errorTags}</p>
                 )}
                 {!loadingTags && !errorTags && tags.length === 0 && (
-                  <SidebarMenuItem className="px-2 text-xs text-sidebar-foreground/70 group-data-[collapsible=icon]:hidden">
-                    No tags available.
-                  </SidebarMenuItem>
+                  <p className="px-2 text-xs text-sidebar-foreground/70 w-full">No tags available.</p>
                 )}
                 {!loadingTags && !errorTags && tags.map((tag) => (
-                  <SidebarMenuItem key={`tag-${tag.id}`}>
-                    <SidebarMenuButton
-                      tooltip={{
-                        content: tag.name,
-                        className: "max-w-[200px] text-center",
-                      }}
-                      className="h-auto py-1 px-2 text-left text-xs group-data-[collapsible=icon]:p-1.5 group-data-[collapsible=icon]:w-full group-data-[collapsible=icon]:h-auto focus-visible:ring-inset"
-                    >
-                      {/* <TagIcon className="mr-2 h-3 w-3 text-sidebar-foreground/80" /> */}
-                      <span className="truncate group-data-[collapsible=icon]:hidden">
-                        {tag.name}
-                      </span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
+                  <Badge
+                    key={`tag-${tag.id}`}
+                    variant="secondary"
+                    className="m-1 cursor-pointer hover:bg-accent hover:text-accent-foreground"
+                    onClick={() => { /* Future: handle tag click, e.g., filter products by tag */ }}
+                    title={tag.name}
+                  >
+                    {tag.name}
+                  </Badge>
                 ))}
-              </SidebarMenu>
+              </div>
             </ScrollArea>
-            {/* The collapsed view for tags icon is now removed */}
           </SidebarGroup>
 
         </SidebarMenu>
@@ -419,4 +410,3 @@ export function SaleCategorySidebar() {
     </Sidebar>
   );
 }
-
