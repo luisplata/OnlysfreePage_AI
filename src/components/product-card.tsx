@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Eye, Film } from 'lucide-react'; // Added Film icon for streaming
+import { Eye, Film } from 'lucide-react';
 
 interface ProductCardProps {
   product: Product;
@@ -19,9 +19,10 @@ interface ProductCardProps {
 
 export function ProductCard({ product }: ProductCardProps) {
   const Icon = product.productType === 'streaming' ? Film : Eye;
+  const detailPageUrl = `/products/detail?id=${product.id}`;
 
   return (
-    <Link href={`/products/detail?id=${product.id}`} passHref legacyBehavior>
+    <Link href={detailPageUrl} passHref legacyBehavior>
       <a className="block group">
         <Card className="h-full flex flex-col overflow-hidden transition-all duration-200 ease-in-out group-hover:shadow-xl group-hover:scale-[1.02] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg">
           <CardHeader className="p-0">
@@ -35,8 +36,9 @@ export function ProductCard({ product }: ProductCardProps) {
                   className="object-cover transition-transform duration-300 group-hover:scale-105"
                   data-ai-hint={`${product.category} ${product.productType}`}
                   onError={(e) => {
-                    e.currentTarget.src = 'https://placehold.co/600x400.png?text=Image+Not+Found';
-                    e.currentTarget.srcset = '';
+                    // Type assertion to satisfy TS for src property
+                    (e.target as HTMLImageElement).src = 'https://placehold.co/600x400.png?text=Image+Not+Found';
+                    (e.target as HTMLImageElement).srcset = '';
                   }}
                 />
               ) : (
@@ -55,7 +57,7 @@ export function ProductCard({ product }: ProductCardProps) {
             <CardTitle className="text-lg leading-tight mb-1 group-hover:text-primary transition-colors">
               {product.title}
             </CardTitle>
-            <CardDescription className="text-sm line-clamp-2"> {/* Use line-clamp-2 for description */}
+            <CardDescription className="text-sm line-clamp-2">
               {product.description}
             </CardDescription>
              <CardDescription className="text-xs text-muted-foreground mt-1 capitalize">
@@ -63,6 +65,7 @@ export function ProductCard({ product }: ProductCardProps) {
             </CardDescription>
           </CardContent>
           <CardFooter className="p-4 pt-0">
+            {/* The Link component already wraps the Card, so this button doesn't need to be a Link itself */}
             <Button variant="outline" size="sm" className="w-full" aria-label={`View details for ${product.title}`}>
               <Icon className="mr-2 h-4 w-4" />
               View Details

@@ -20,13 +20,19 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'i.ibb.co',
+        hostname: 'i.ibb.co', // From /api/packs
         port: '',
         pathname: '/**',
       },
       {
         protocol: 'https',
-        hostname: 'simp6.jpg.church',
+        hostname: 'simp6.jpg.church', // From /api/model/[id] example
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'fs-01.cyberdrop.to', // From /api/ppv
         port: '',
         pathname: '/**',
       }
