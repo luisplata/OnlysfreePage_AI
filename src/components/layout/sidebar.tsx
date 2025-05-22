@@ -22,19 +22,21 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { VentaRapidaLogo } from '@/components/icons';
 import { saleCategories } from '@/data/mock-data';
 import { Loader2, Tag as TagIcon } from 'lucide-react';
-import type { Product, ApiHotItem, ApiHotListResponse, ApiTagsResponse, Tag, ApiPpvItem, ApiPack } from '@/types';
+import type { Product, ApiHotItem, ApiHotListResponse, ApiTagsResponse, Tag } from '@/types';
 import { Badge } from '@/components/ui/badge';
 
 
 // Helper function to transform API Hot/Popular item data to Product type
 function transformApiHotItemToProduct(apiHotItem: ApiHotItem): Product {
-  const description = apiHotItem.tags || 'No description available.';
-  const category = apiHotItem.tags ? apiHotItem.tags.split('-')[0].trim().toLowerCase() || 'general' : 'general';
+  const tagsString = apiHotItem.tags;
+  const description = tagsString || 'No description available.';
+  const category = tagsString ? tagsString.split('-')[0].trim().toLowerCase() || 'general' : 'general';
 
   return {
-    id: String(apiHotItem.producto_id || apiHotItem.id), // Prefer producto_id if available for linking
+    id: String(apiHotItem.producto_id || apiHotItem.id), 
     title: apiHotItem.nombre,
     description: description,
+    tagsString: tagsString,
     imageUrl: apiHotItem.imagen,
     category: category,
     productType: apiHotItem.isVideo === "1" || (apiHotItem.url_video && apiHotItem.url_video !== "") ? 'streaming' : 'standard',
@@ -46,8 +48,8 @@ function transformApiHotItemToProduct(apiHotItem: ApiHotItem): Product {
 function transformApiTagsResponseToArray(apiTags: ApiTagsResponse): Tag[] {
   return Object.entries(apiTags)
     .map(([id, name]) => ({ id, name }))
-    .filter(tag => tag.name && tag.name.trim() !== "") // Filter out tags with empty names
-    .sort((a, b) => a.name.localeCompare(b.name)); // Sort tags alphabetically
+    .filter(tag => tag.name && tag.name.trim() !== "") 
+    .sort((a, b) => a.name.localeCompare(b.name)); 
 }
 
 // Fisher-Yates shuffle algorithm
@@ -55,7 +57,7 @@ function shuffleArray<T>(array: T[]): T[] {
   const newArray = [...array];
   for (let i = newArray.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [newArray[i], newArray[j]] = [newArray[j], newArray[i]]; // swap elements
+    [newArray[i], newArray[j]] = [newArray[j], newArray[i]]; 
   }
   return newArray;
 }
@@ -194,16 +196,15 @@ export function SaleCategorySidebar() {
 
   React.useEffect(() => {
     if (loadingTags || errorTags || allFetchedTags.length <= TAG_DISPLAY_COUNT) {
-      // Don't start interval if still loading, there's an error, or not enough tags to rotate
       return;
     }
 
     const intervalId = setInterval(() => {
-      const shuffled = shuffleArray([...allFetchedTags]); // Shuffle a copy
+      const shuffled = shuffleArray([...allFetchedTags]); 
       setDisplayedTags(shuffled.slice(0, TAG_DISPLAY_COUNT));
     }, TAG_REFRESH_INTERVAL);
 
-    return () => clearInterval(intervalId); // Cleanup interval
+    return () => clearInterval(intervalId); 
   }, [allFetchedTags, loadingTags, errorTags]);
 
 
@@ -217,7 +218,7 @@ export function SaleCategorySidebar() {
       <SidebarContent>
         <SidebarMenu>
           {streamingsCategory && (
-            <SidebarMenuItem>
+             <SidebarMenuItem>
                 <SidebarMenuButton
                     asChild
                     isActive={pathname === streamingsCategory.href}
@@ -434,5 +435,3 @@ export function SaleCategorySidebar() {
     </Sidebar>
   );
 }
-
-

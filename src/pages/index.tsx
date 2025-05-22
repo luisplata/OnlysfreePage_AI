@@ -7,14 +7,16 @@ import { Loader2 } from 'lucide-react';
 
 // Helper function to transform API pack data to Product type
 function transformApiPackToProduct(apiPack: ApiPack): Product {
-  const description = apiPack.tags || 'No description available.';
-  const category = apiPack.tags ? apiPack.tags.split('-')[0].trim().toLowerCase() || 'general' : 'general';
+  const tagsString = apiPack.tags;
+  const description = tagsString || 'No description available.';
+  const category = tagsString ? tagsString.split('-')[0].trim().toLowerCase() || 'general' : 'general';
   const idForLink = apiPack.producto_id || String(apiPack.id);
 
   return {
     id: idForLink,
     title: apiPack.nombre,
     description: description,
+    tagsString: tagsString,
     imageUrl: apiPack.imagen,
     category: category,
     productType: (apiPack.isVideo === "1" || (apiPack.url_video && apiPack.url_video !== "")) ? 'streaming' : 'standard',
@@ -54,27 +56,23 @@ export default function HomePage() {
     async function loadInitialProducts() {
       setInitialLoading(true);
       setError(null);
-      setHasMore(true); // Assume there's more until proven otherwise
-      setCurrentPage(1); // Reset current page for initial load
+      setHasMore(true); 
+      setCurrentPage(1); 
 
       try {
-        // Fetch Page 1
         const page1Response = await fetchPageData(1);
         let allFetchedProductsRaw: ApiPack[] = [...page1Response.data];
         let nextPageToLoad = 2;
         let moreDataExistsAfterInitialLoad = page1Response.next_page_url != null && 1 < page1Response.last_page;
 
-        // Attempt to Fetch Page 2 if Page 1 indicates more
         if (moreDataExistsAfterInitialLoad) {
           try {
             const page2Response = await fetchPageData(2);
             allFetchedProductsRaw = [...allFetchedProductsRaw, ...page2Response.data];
-            nextPageToLoad = 3; // Next page will be 3
+            nextPageToLoad = 3; 
             moreDataExistsAfterInitialLoad = page2Response.next_page_url != null && 2 < page2Response.last_page;
           } catch (page2Error: any) {
             console.warn("Failed to fetch page 2 during initial load:", page2Error.message);
-            // If page 2 fails, we still proceed with page 1 data.
-            // nextPageToLoad remains 2, moreDataExistsAfterInitialLoad is based on page1Response.
           }
         }
         
@@ -87,14 +85,14 @@ export default function HomePage() {
         let errorMessage = e.message || 'Failed to load products.';
         if (e.message && e.message.includes('Failed to fetch')) {
           const isDevelopmentEnv = process.env.NODE_ENV === 'development';
-          if (!isDevelopmentEnv) {
-            errorMessage = `Network error or CORS issue. Ensure the API server (https://test.onlysfree.com) is accessible and CORS is configured for your deployment domain. Details: ${e.message}`;
+          if (isDevelopmentEnv) {
+             errorMessage = `Network error. Ensure the API server (https://test.onlysfree.com) is accessible and the development proxy is working correctly. Proxy is targeting /api-proxy. Details: ${e.message}`;
           } else {
-            errorMessage = `Network error. Ensure the API server (https://test.onlysfree.com) is accessible and the development proxy is working correctly. Proxy is targeting /api-proxy. Details: ${e.message}`;
+            errorMessage = `Network error or CORS issue. Ensure the API server (https://test.onlysfree.com) is accessible and CORS is configured for your deployment domain. Details: ${e.message}`;
           }
         }
         setError(errorMessage);
-        setHasMore(false); // Stop trying if initial load fails badly
+        setHasMore(false); 
       } finally {
         setInitialLoading(false);
       }
@@ -123,7 +121,7 @@ export default function HomePage() {
     } catch (e: any) {
       console.error(`Failed to load more products (page ${currentPage}):`, e);
       setError(`Failed to load page ${currentPage}. Further loading may be affected.`);
-      setHasMore(false); // Stop trying if a page fails to load
+      setHasMore(false); 
     } finally {
       setLoadingMore(false);
     }
@@ -199,7 +197,7 @@ export default function HomePage() {
             <p className="text-muted-foreground">You've reached the end!</p>
           </div>
         )}
-         {error && products.length > 0 && ( // Show error for subsequent loads if initial load was successful
+         {error && products.length > 0 && ( 
           <div className="py-8 text-center text-destructive">
             <p>{error}</p>
           </div>

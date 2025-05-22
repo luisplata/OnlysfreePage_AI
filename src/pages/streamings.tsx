@@ -9,18 +9,20 @@ import type { Product, ApiPpvItem, ApiPpvListResponse } from '@/types';
 
 // Helper function to transform API PPV item data to Product type
 function transformApiPpvItemToProduct(apiPpvItem: ApiPpvItem): Product {
-  const description = apiPpvItem.tags || 'No description available.';
-  const category = apiPpvItem.tags ? apiPpvItem.tags.split('-')[0].trim().toLowerCase() || 'streaming' : 'streaming';
+  const tagsString = apiPpvItem.tags;
+  const description = tagsString || 'No description available.';
+  const category = tagsString ? tagsString.split('-')[0].trim().toLowerCase() || 'streaming' : 'streaming';
 
   return {
     id: String(apiPpvItem.id),
     title: apiPpvItem.nombre,
     description: description,
+    tagsString: tagsString,
     imageUrl: apiPpvItem.imagen.trim(),
     category: category,
     productType: 'streaming',
     videoUrl: apiPpvItem.url,
-    hotLink: apiPpvItem.url, // For PPV, the stream URL itself can be the hotLink
+    hotLink: apiPpvItem.url, 
   };
 }
 
@@ -48,17 +50,15 @@ export default function StreamingsPage() {
   const [initialLoading, setInitialLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1); // Stores the *next* page to fetch
+  const [currentPage, setCurrentPage] = useState(1); 
   const [hasMore, setHasMore] = useState(true);
 
-
-  // Initial data load (first page)
   useEffect(() => {
     async function loadInitialStreamings() {
       setInitialLoading(true);
       setError(null);
       setHasMore(true);
-      setCurrentPage(1); // Reset current page for initial load
+      setCurrentPage(1); 
 
       try {
         const page1Response = await fetchPageData(1);
@@ -75,10 +75,10 @@ export default function StreamingsPage() {
         let errorMessage = e.message || 'Failed to load streamings.';
         if (e.message && e.message.toLowerCase().includes('failed to fetch')) {
           const isDevelopmentEnv = process.env.NODE_ENV === 'development';
-          if (!isDevelopmentEnv) {
-            errorMessage = `Network error or CORS issue. Ensure the API server (https://test.onlysfree.com) is accessible and CORS is configured for your deployment domain. Details: ${e.message}`;
-          } else {
+          if (isDevelopmentEnv) {
             errorMessage = `Network error. Ensure the API server (https://test.onlysfree.com) is accessible and the development proxy targeting /api-proxy is working correctly. Details: ${e.message}`;
+          } else {
+            errorMessage = `Network error or CORS issue. Ensure the API server (https://test.onlysfree.com) is accessible and CORS is configured for your deployment domain. Details: ${e.message}`;
           }
         } else if (e.message && e.message.includes('HTTP error! status: 404')) {
           errorMessage = 'Could not find streaming products (404). The API endpoint might be incorrect or temporarily unavailable.';
@@ -112,15 +112,12 @@ export default function StreamingsPage() {
     } catch (e: any) {
       console.error(`Failed to load more streamings (page ${currentPage}):`, e);
       setError(`Failed to load page ${currentPage}. Further loading may be affected.`);
-      // Optionally setHasMore(false) here if a subsequent page fails, to stop further attempts.
-      // Or allow retries by not setting it to false. For now, let's keep it as is.
     } finally {
       setLoadingMore(false);
     }
   }, [currentPage, hasMore, loadingMore, initialLoading]);
 
   const handleScroll = useCallback(() => {
-    // Check if the user is near the bottom of the page
     const nearBottom = window.innerHeight + document.documentElement.scrollTop + 300 >= document.documentElement.offsetHeight;
     if (nearBottom && hasMore && !loadingMore && !initialLoading) {
       loadMoreProducts();

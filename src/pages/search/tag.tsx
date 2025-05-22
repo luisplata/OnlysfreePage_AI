@@ -10,14 +10,16 @@ import { Loader2, ArrowLeft } from 'lucide-react';
 
 // Helper function to transform API pack data (from search results 'productos') to Product type
 function transformApiPackToProduct(apiPack: ApiPack): Product {
-  const description = apiPack.tags || 'No description available.';
-  const category = apiPack.tags ? apiPack.tags.split('-')[0].trim().toLowerCase() || 'general' : 'general';
+  const tagsString = apiPack.tags;
+  const description = tagsString || 'No description available.';
+  const category = tagsString ? tagsString.split('-')[0].trim().toLowerCase() || 'general' : 'general';
   const idForLink = apiPack.producto_id || String(apiPack.id);
 
   return {
     id: idForLink,
     title: apiPack.nombre,
     description: description,
+    tagsString: tagsString,
     imageUrl: apiPack.imagen,
     category: category,
     productType: (apiPack.isVideo === "1" || (apiPack.url_video && apiPack.url_video !== "")) ? 'streaming' : 'standard',
@@ -28,13 +30,15 @@ function transformApiPackToProduct(apiPack: ApiPack): Product {
 
 // Helper function to transform API PPV item data (from search results 'streams') to Product type
 function transformApiPpvItemToProduct(apiPpvItem: ApiPpvItem): Product {
-  const description = apiPpvItem.tags || 'No description available.';
-  const category = apiPpvItem.tags ? apiPpvItem.tags.split('-')[0].trim().toLowerCase() || 'streaming' : 'streaming';
+  const tagsString = apiPpvItem.tags;
+  const description = tagsString || 'No description available.';
+  const category = tagsString ? tagsString.split('-')[0].trim().toLowerCase() || 'streaming' : 'streaming';
 
   return {
     id: String(apiPpvItem.id),
     title: apiPpvItem.nombre,
     description: description,
+    tagsString: tagsString,
     imageUrl: apiPpvItem.imagen.trim(),
     category: category,
     productType: 'streaming',
@@ -80,65 +84,74 @@ export default function TagSearchPage() {
     } else {
       setInitialLoading(false);
       setError('No search tag provided.');
+      setCombinedResults([]);
+      setHasMoreProducts(false);
+      setHasMoreStreams(false);
     }
 
     async function fetchInitialResults(url: string) {
       setInitialLoading(true);
       setError(null);
       setCombinedResults([]);
-      setCurrentPageProducts(1); // Reset for new search
+      setCurrentPageProducts(1); 
       setHasMoreProducts(true);
-      setCurrentPageStreams(1); // Reset for new search
+      setCurrentPageStreams(1); 
       setHasMoreStreams(true);
+      
+      let initialItems: Product[] = [];
+      let fetchedAnyData = false;
 
       try {
         // Fetch page 1 of products
         const productsUrl = `${url}&productos_page=1`;
         const productsResponse = await fetch(productsUrl, { headers: { 'Accept': 'application/json' } });
         if (!productsResponse.ok) {
-          throw new Error(`HTTP error fetching initial products! status: ${productsResponse.status}, message: ${await productsResponse.text()}`);
-        }
-        const productsData: ApiCategorizedSearchResultsResponse = await productsResponse.json();
-        
-        let initialItems: Product[] = [];
-        if (productsData.productos && productsData.productos.data) {
-          initialItems = [...initialItems, ...productsData.productos.data.map(transformApiPackToProduct)];
-          setCurrentPageProducts(productsData.productos.current_page + 1);
-          setHasMoreProducts(productsData.productos.next_page_url != null && productsData.productos.current_page < productsData.productos.last_page);
+          console.warn(`HTTP error fetching initial products! status: ${productsResponse.status}, message: ${await productsResponse.text()}`);
+           setHasMoreProducts(false);
         } else {
-          setHasMoreProducts(false);
+            const productsData: ApiCategorizedSearchResultsResponse = await productsResponse.json();
+            if (productsData.productos && productsData.productos.data) {
+              initialItems = [...initialItems, ...productsData.productos.data.map(transformApiPackToProduct)];
+              setCurrentPageProducts(productsData.productos.current_page + 1);
+              setHasMoreProducts(productsData.productos.next_page_url != null && productsData.productos.current_page < productsData.productos.last_page);
+              fetchedAnyData = true;
+            } else {
+              setHasMoreProducts(false);
+            }
         }
+      } catch (e: any) {
+        console.warn("Error fetching initial products for tag search:", e.message);
+        setHasMoreProducts(false);
+      }
 
-        // Fetch page 1 of streams
+      try {
+         // Fetch page 1 of streams
         const streamsUrl = `${url}&streams_page=1`;
         const streamsResponse = await fetch(streamsUrl, { headers: { 'Accept': 'application/json' } });
          if (!streamsResponse.ok) {
-          throw new Error(`HTTP error fetching initial streams! status: ${streamsResponse.status}, message: ${await streamsResponse.text()}`);
-        }
-        const streamsData: ApiCategorizedSearchResultsResponse = await streamsResponse.json();
-
-        if (streamsData.streams && streamsData.streams.data) {
-          initialItems = [...initialItems, ...streamsData.streams.data.map(transformApiPpvItemToProduct)];
-          setCurrentPageStreams(streamsData.streams.current_page + 1);
-          setHasMoreStreams(streamsData.streams.next_page_url != null && streamsData.streams.current_page < streamsData.streams.last_page);
-        } else {
+          console.warn(`HTTP error fetching initial streams! status: ${streamsResponse.status}, message: ${await streamsResponse.text()}`);
           setHasMoreStreams(false);
+        } else {
+            const streamsData: ApiCategorizedSearchResultsResponse = await streamsResponse.json();
+            if (streamsData.streams && streamsData.streams.data) {
+              initialItems = [...initialItems, ...streamsData.streams.data.map(transformApiPpvItemToProduct)];
+              setCurrentPageStreams(streamsData.streams.current_page + 1);
+              setHasMoreStreams(streamsData.streams.next_page_url != null && streamsData.streams.current_page < streamsData.streams.last_page);
+              fetchedAnyData = true;
+            } else {
+              setHasMoreStreams(false);
+            }
         }
-        
-        setCombinedResults(initialItems);
-        
       } catch (e: any) {
-        console.error(`Failed to fetch initial search results for tag "${decodeURIComponent(tagQuery as string)}":`, e);
-        let errorMessage = e.message || 'Failed to load search results.';
-         if (e.message && e.message.toLowerCase().includes('failed to fetch')) {
-            errorMessage = `Network error or CORS issue. Ensure the API server is accessible. Details: ${e.message}`;
-        }
-        setError(errorMessage);
-        setHasMoreProducts(false);
+        console.warn("Error fetching initial streams for tag search:", e.message);
         setHasMoreStreams(false);
-      } finally {
-        setInitialLoading(false);
       }
+        
+      setCombinedResults(initialItems);
+      if (!fetchedAnyData && initialItems.length === 0) {
+        // Potentially set error here if both fetches fail and no items were loaded
+      }
+      setInitialLoading(false);
     }
   }, [router.isReady, router.query.tag]);
 
@@ -153,41 +166,54 @@ export default function TagSearchPage() {
       if (hasMoreProducts) {
         const productsUrl = `${baseApiUrl}&productos_page=${currentPageProducts}`;
         const productsRes = await fetch(productsUrl, { headers: { 'Accept': 'application/json' } });
-        if (!productsRes.ok) throw new Error(`Failed to fetch products page ${currentPageProducts}: ${await productsRes.text()}`);
-        const productsData: ApiCategorizedSearchResultsResponse = await productsRes.json();
-
-        if (productsData.productos && productsData.productos.data) {
-          newItems = [...newItems, ...productsData.productos.data.map(transformApiPackToProduct)];
-          setHasMoreProducts(productsData.productos.next_page_url != null && productsData.productos.current_page < productsData.productos.last_page);
-          setCurrentPageProducts(productsData.productos.current_page + 1);
+        if (!productsRes.ok) {
+            console.warn(`Failed to fetch products page ${currentPageProducts} for tag: ${await productsRes.text()}`);
+            setHasMoreProducts(false);
         } else {
-          setHasMoreProducts(false);
+            const productsData: ApiCategorizedSearchResultsResponse = await productsRes.json();
+            if (productsData.productos && productsData.productos.data) {
+              newItems = [...newItems, ...productsData.productos.data.map(transformApiPackToProduct)];
+              setHasMoreProducts(productsData.productos.next_page_url != null && productsData.productos.current_page < productsData.productos.last_page);
+              setCurrentPageProducts(productsData.productos.current_page + 1);
+            } else {
+              setHasMoreProducts(false);
+            }
         }
       }
-
+    } catch (e: any) {
+      console.error("Error loading more products for tag:", e.message);
+      setError("Failed to load more products for this tag. " + e.message);
+      setHasMoreProducts(false);
+    }
+    
+    try {
       if (hasMoreStreams) {
         const streamsUrl = `${baseApiUrl}&streams_page=${currentPageStreams}`;
         const streamsRes = await fetch(streamsUrl, { headers: { 'Accept': 'application/json' } });
-        if (!streamsRes.ok) throw new Error(`Failed to fetch streams page ${currentPageStreams}: ${await streamsRes.text()}`);
-        const streamsData: ApiCategorizedSearchResultsResponse = await streamsRes.json();
-
-        if (streamsData.streams && streamsData.streams.data) {
-          newItems = [...newItems, ...streamsData.streams.data.map(transformApiPpvItemToProduct)];
-          setHasMoreStreams(streamsData.streams.next_page_url != null && streamsData.streams.current_page < streamsData.streams.last_page);
-          setCurrentPageStreams(streamsData.streams.current_page + 1);
+        if (!streamsRes.ok) {
+            console.warn(`Failed to fetch streams page ${currentPageStreams} for tag: ${await streamsRes.text()}`);
+            setHasMoreStreams(false);
         } else {
-          setHasMoreStreams(false);
+            const streamsData: ApiCategorizedSearchResultsResponse = await streamsRes.json();
+            if (streamsData.streams && streamsData.streams.data) {
+              newItems = [...newItems, ...streamsData.streams.data.map(transformApiPpvItemToProduct)];
+              setHasMoreStreams(streamsData.streams.next_page_url != null && streamsData.streams.current_page < streamsData.streams.last_page);
+              setCurrentPageStreams(streamsData.streams.current_page + 1);
+            } else {
+              setHasMoreStreams(false);
+            }
         }
       }
-
-      setCombinedResults(prev => [...prev, ...newItems]);
-
     } catch (e: any) {
-      console.error("Error loading more results:", e.message);
-      setError("Failed to load more results. " + e.message);
-    } finally {
-      setLoadingMore(false);
+      console.error("Error loading more streams for tag:", e.message);
+      setError("Failed to load more streams for this tag. " + e.message);
+      setHasMoreStreams(false);
     }
+
+    if (newItems.length > 0) {
+        setCombinedResults(prev => [...prev, ...newItems]);
+    }
+    setLoadingMore(false);
   }, [
     baseApiUrl,
     currentPageProducts,
@@ -231,14 +257,14 @@ export default function TagSearchPage() {
           </div>
         )}
 
-        {!initialLoading && error && (
+        {!initialLoading && error && combinedResults.length === 0 &&(
           <div className="text-center py-10">
             <h1 className="text-2xl font-bold text-destructive mb-2">Search Error</h1>
             <p className="text-muted-foreground whitespace-pre-wrap">{error}</p>
           </div>
         )}
 
-        {!initialLoading && !error && (
+        {!initialLoading && (
           <>
             <h1 className="text-3xl font-bold mb-8 text-foreground">
               Results for tag: <span className="text-primary">{tag}</span>
@@ -249,22 +275,27 @@ export default function TagSearchPage() {
                 {combinedResults.map((product) => (
                   <ProductCard key={`${product.productType}-${product.id}-${product.title}`} product={product} />
                 ))}
-                {loadingMore && (
-                  <div className="py-8 text-center col-span-full">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-                    <p className="text-muted-foreground mt-2">Loading more results...</p>
-                  </div>
-                )}
-                {!hasMoreProducts && !hasMoreStreams && combinedResults.length > 0 && !initialLoading && !loadingMore && (
-                  <div className="py-8 text-center col-span-full">
-                    <p className="text-muted-foreground">All results shown for this tag.</p>
-                  </div>
-                )}
               </div>
             ) : (
-              <div className="text-center py-10">
+             !error && <div className="text-center py-10">
                 <p className="text-xl text-muted-foreground">No products or streams found for the tag "{tag}".</p>
               </div>
+            )}
+             {loadingMore && (
+              <div className="py-8 text-center col-span-full">
+                <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+                <p className="text-muted-foreground mt-2">Loading more results...</p>
+              </div>
+            )}
+            {!hasMoreProducts && !hasMoreStreams && combinedResults.length > 0 && !initialLoading && !loadingMore && (
+              <div className="py-8 text-center col-span-full">
+                <p className="text-muted-foreground">All results shown for this tag.</p>
+              </div>
+            )}
+            {error && combinedResults.length > 0 && (
+                 <div className="py-8 text-center text-destructive">
+                    <p>{error}</p>
+                 </div>
             )}
           </>
         )}

@@ -56,6 +56,7 @@ export interface Product {
   productType: 'standard' | 'streaming';
   videoUrl?: string; // URL for embedding/direct video playback or iframe
   hotLink?: string;  // External link (e.g., for /api/packs or the PPV URL itself)
+  tagsString?: string; // Raw tags string e.g., "tag1-tag2-tag3"
 }
 
 export interface SaleCategory {
@@ -69,6 +70,8 @@ export interface SaleCategory {
 export interface ApiPackListResponse {
   current_page: number;
   data: ApiPack[];
+  last_page: number;
+  next_page_url: string | null;
   // ... other pagination fields
 }
 
@@ -79,6 +82,8 @@ export type ApiModelDetailResponse = ApiPack; // Structure is the same as ApiPac
 export interface ApiPpvListResponse {
   current_page: number;
   data: ApiPpvItem[];
+  last_page: number;
+  next_page_url: string | null;
   // ... other pagination fields
 }
 
@@ -102,6 +107,6 @@ export interface Tag {
 // API response for /api/tag/search and /api/search?query=
 // Both endpoints return an object with 'productos' and 'streams' keys
 export interface ApiCategorizedSearchResultsResponse {
-  productos: ApiPackListResponse; // Contains ApiPack items in its 'data' array
-  streams: ApiPpvListResponse;    // Contains ApiPpvItem items in its 'data' array
+  productos?: ApiPackListResponse; // Contains ApiPack items in its 'data' array
+  streams?: ApiPpvListResponse;    // Contains ApiPpvItem items in its 'data' array
 }

@@ -12,19 +12,25 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Eye, Film } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { useRouter } from 'next/router';
 
 interface ProductCardProps {
   product: Product;
 }
 
 export function ProductCard({ product }: ProductCardProps) {
+  const router = useRouter();
   const Icon = product.productType === 'streaming' ? Film : Eye;
   
-  // Ensure the detail page URL is correctly formatted
   let detailPageUrl = `/products/detail?id=${product.id}`;
   if (product.productType === 'streaming') {
-    detailPageUrl += '&type=streaming'; // Add type parameter for streaming products
+    detailPageUrl += '&type=streaming'; 
   }
+
+  const handleTagClick = (tag: string) => {
+    router.push(`/search/tag?tag=${encodeURIComponent(tag.trim())}`);
+  };
 
   return (
     <Link href={detailPageUrl} passHref legacyBehavior>
@@ -41,7 +47,6 @@ export function ProductCard({ product }: ProductCardProps) {
                   className="object-cover transition-transform duration-300 group-hover:scale-105"
                   data-ai-hint={`${product.category} ${product.productType === 'streaming' ? 'video stream' : 'product item'}`}
                   onError={(e) => {
-                    // Type assertion to satisfy TS for src property
                     (e.target as HTMLImageElement).src = `https://placehold.co/600x400.png?text=${encodeURIComponent(product.title + '\\nImage Not Found')}`;
                     (e.target as HTMLImageElement).srcset = '';
                   }}
@@ -72,9 +77,31 @@ export function ProductCard({ product }: ProductCardProps) {
              <CardDescription className="text-xs text-muted-foreground mt-1 capitalize">
               Category: {product.category}
             </CardDescription>
+            {product.tagsString && product.tagsString.trim() !== '' && (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {product.tagsString.split('-')
+                  .map(tag => tag.trim())
+                  .filter(tag => tag !== '')
+                  .slice(0, 3) // Show max 3 tags in card
+                  .map((tag, index) => (
+                    <Badge
+                      key={index}
+                      variant="secondary"
+                      className="cursor-pointer hover:bg-accent hover:text-accent-foreground text-xs"
+                      onClick={(e) => {
+                        e.preventDefault(); 
+                        e.stopPropagation(); 
+                        handleTagClick(tag);
+                      }}
+                      title={`Search for tag: ${tag}`}
+                    >
+                      {tag}
+                    </Badge>
+                  ))}
+              </div>
+            )}
           </CardContent>
           <CardFooter className="p-4 pt-0">
-            {/* The Link component already wraps the Card, so this button doesn't need to be a Link itself */}
             <Button variant="outline" size="sm" className="w-full" aria-label={`View details for ${product.title}`}>
               <Icon className="mr-2 h-4 w-4" />
               View Details

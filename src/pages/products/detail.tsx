@@ -5,18 +5,21 @@ import Head from 'next/head';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Loader2, AlertTriangle, ArrowLeft, ExternalLink } from 'lucide-react';
-import type { Product, ApiModelDetailResponse, ApiPpvDetailResponse, ApiPpvItem } from '@/types';
+import type { Product, ApiModelDetailResponse, ApiPpvDetailResponse, ApiPpvItem, ApiPack } from '@/types';
 import Link from 'next/link';
+import { Badge } from '@/components/ui/badge';
 
 // Helper function to transform API model detail (from /api/model/[id]) to Product type
 function transformApiModelToProduct(apiModel: ApiModelDetailResponse): Product {
-  const description = apiModel.tags || 'No description available.';
-  const category = apiModel.tags ? apiModel.tags.split('-')[0].trim().toLowerCase() || 'general' : 'general';
+  const tagsString = apiModel.tags;
+  const description = tagsString || 'No description available.';
+  const category = tagsString ? tagsString.split('-')[0].trim().toLowerCase() || 'general' : 'general';
 
   return {
     id: String(apiModel.id),
     title: apiModel.nombre,
     description: description,
+    tagsString: tagsString,
     imageUrl: apiModel.imagen,
     category: category,
     productType: (apiModel.isVideo === "1" || (apiModel.url_video && apiModel.url_video !== "")) ? 'streaming' : 'standard',
@@ -27,18 +30,20 @@ function transformApiModelToProduct(apiModel: ApiModelDetailResponse): Product {
 
 // Helper function to transform API PPV detail (from /api/ppv/[id]) to Product type
 function transformApiPpvDetailToProduct(apiPpvItem: ApiPpvItem): Product {
-  const description = apiPpvItem.tags || 'No description available.';
-  const category = apiPpvItem.tags ? apiPpvItem.tags.split('-')[0].trim().toLowerCase() || 'streaming' : 'streaming';
+  const tagsString = apiPpvItem.tags;
+  const description = tagsString || 'No description available.';
+  const category = tagsString ? tagsString.split('-')[0].trim().toLowerCase() || 'streaming' : 'streaming';
 
   return {
     id: String(apiPpvItem.id),
     title: apiPpvItem.nombre,
     description: description,
+    tagsString: tagsString,
     imageUrl: apiPpvItem.imagen.trim(),
     category: category,
-    productType: 'streaming', // Items from /ppv are always streaming
-    videoUrl: apiPpvItem.url, // This is the iframe/video source
-    hotLink: apiPpvItem.url, // The button will also link to this URL
+    productType: 'streaming', 
+    videoUrl: apiPpvItem.url, 
+    hotLink: apiPpvItem.url, 
   };
 }
 
@@ -56,7 +61,7 @@ export default function ProductDetailPage() {
       const currentId = typeof id === 'string' ? id : undefined;
       if (!currentId) {
         setLoading(false);
-        // Error will be handled by !product check later if ID isn't eventually found
+        setError("Product ID is missing.");
         return;
       }
 
@@ -64,16 +69,10 @@ export default function ProductDetailPage() {
       setError(null);
       
       const isDevelopment = process.env.NODE_ENV === 'development';
-      let apiBaseUrl = '';
+      let apiBaseUrl = isDevelopment ? '/api-proxy' : 'https://test.onlysfree.com/api';
       
       let apiUrl = '';
       let isStreamingTypeFromQuery = productTypeParam === 'streaming';
-
-      if (isDevelopment) {
-        apiBaseUrl = '/api-proxy';
-      } else {
-        apiBaseUrl = 'https://test.onlysfree.com/api';
-      }
 
       if (isStreamingTypeFromQuery) {
         apiUrl = `${apiBaseUrl}/ppv/${currentId}`;
@@ -101,10 +100,12 @@ export default function ProductDetailPage() {
       } catch (e: any) {
         console.error(`Error fetching product with ID ${currentId} (type: ${productTypeParam || 'standard'}):`, e);
         let errorMessage = e.message || 'Failed to load product details.';
-        if (e.message && e.message.includes('Failed to fetch') && !isDevelopment) {
-            errorMessage = `Network error or CORS issue. Ensure the API server (https://test.onlysfree.com) is accessible and CORS is configured for your deployment domain. Details: ${e.message}`;
-        } else if (e.message && e.message.includes('Failed to fetch') && isDevelopment){
-            errorMessage = `Network error. Ensure the API server (https://test.onlysfree.com) is accessible and the development proxy is working correctly. Proxy is targeting /api-proxy. Details: ${e.message}`;
+        if (e.message && e.message.includes('Failed to fetch')) {
+            if (isDevelopment){
+                errorMessage = `Network error. Ensure the API server (https://test.onlysfree.com) is accessible and the development proxy is working correctly. Proxy is targeting /api-proxy. Details: ${e.message}`;
+            } else {
+                errorMessage = `Network error or CORS issue. Ensure the API server (https://test.onlysfree.com) is accessible and CORS is configured for your deployment domain. Details: ${e.message}`;
+            }
         } else if (e.message && e.message.includes('HTTP error! status: 404')) {
           errorMessage = `Could not find the product (404). The API endpoint might be incorrect or the item ID (${currentId}) does not exist for the specified type (${productTypeParam || 'standard'}).`;
         }
@@ -125,6 +126,10 @@ export default function ProductDetailPage() {
     } else {
       router.push('/');
     }
+  };
+
+  const handleTagClick = (tag: string) => {
+    router.push(`/search/tag?tag=${encodeURIComponent(tag.trim())}`);
   };
 
   if (loading) {
@@ -156,7 +161,7 @@ export default function ProductDetailPage() {
         <p className="text-muted-foreground mb-6">The product you are looking for (ID: {id || 'N/A'}, Type: {productTypeParam || 'standard'}) does not exist or could not be loaded.</p>
         <Button variant="outline" onClick={handleBackNavigation}>
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Home
+          Go Back
         </Button>
       </div>
     );
@@ -219,9 +224,31 @@ export default function ProductDetailPage() {
                 <h3 className="text-sm font-semibold text-muted-foreground mb-1">Product Type</h3>
                 <p className="text-card-foreground capitalize">{product.productType}</p>
             </div>
+            
+            {product.tagsString && product.tagsString.trim() !== '' && (
+              <div className="mt-4">
+                <h3 className="text-sm font-semibold text-muted-foreground mb-2">Tags</h3>
+                <div className="flex flex-wrap gap-2">
+                  {product.tagsString.split('-')
+                    .map(tag => tag.trim())
+                    .filter(tag => tag !== '')
+                    .map((tag, index) => (
+                      <Badge
+                        key={index}
+                        variant="outline"
+                        className="cursor-pointer hover:bg-accent hover:text-accent-foreground"
+                        onClick={() => handleTagClick(tag)}
+                        title={`Search for tag: ${tag}`}
+                      >
+                        {tag}
+                      </Badge>
+                    ))}
+                </div>
+              </div>
+            )}
 
             {product.hotLink && product.productType !== 'streaming' && (
-              <Button size="lg" className="w-full" asChild>
+              <Button size="lg" className="w-full mt-6" asChild>
                 <a href={product.hotLink} target="_blank" rel="noopener noreferrer">
                   View Content
                   <ExternalLink className="ml-2 h-5 w-5" />
@@ -233,4 +260,19 @@ export default function ProductDetailPage() {
       </div>
     </>
   );
+}
+
+// Minimal getStaticPaths and getStaticProps if not pre-rendering specific paths
+export async function getStaticPaths() {
+  return {
+    paths: [], // No paths are pre-rendered; all rendering is client-side or on-demand
+    fallback: 'blocking', // or true if you want to show a fallback UI during generation
+  };
+}
+
+export async function getStaticProps() {
+  // Props will be filled by client-side fetching
+  return {
+    props: {},
+  };
 }
