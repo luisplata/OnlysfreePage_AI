@@ -99,8 +99,9 @@ export interface Tag {
   name: string;
 }
 
-// API response for /api/tag/search
-export interface ApiTagSearchResponse {
+// API response for /api/tag/search and /api/search?query=
+// Both endpoints return an object with 'productos' and 'streams' keys
+export interface ApiCategorizedSearchResultsResponse {
   productos: ApiPackListResponse; // Contains ApiPack items in its 'data' array
   streams: ApiPpvListResponse;    // Contains ApiPpvItem items in its 'data' array
 }

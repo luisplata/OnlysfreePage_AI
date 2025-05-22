@@ -43,8 +43,7 @@ function transformApiPpvItemToProduct(apiPpvItem: ApiPpvItem): Product {
   };
 }
 
-
-export default function TagSearchPage() {
+export default function GeneralSearchPage() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [foundProducts, setFoundProducts] = useState<Product[]>([]);
@@ -55,18 +54,18 @@ export default function TagSearchPage() {
   useEffect(() => {
     if (!router.isReady) return;
 
-    const tagQuery = router.query.tag;
+    const queryTerm = router.query.term;
 
-    if (typeof tagQuery === 'string' && tagQuery.trim() !== '') {
-      const decodedTag = decodeURIComponent(tagQuery.trim());
-      setSearchTerm(decodedTag);
-      fetchResults(decodedTag);
+    if (typeof queryTerm === 'string' && queryTerm.trim() !== '') {
+      const decodedQuery = decodeURIComponent(queryTerm.trim());
+      setSearchTerm(decodedQuery);
+      fetchResults(decodedQuery);
     } else {
       setLoading(false);
-      setError('No search tag provided.');
+      setError('No search term provided.');
     }
 
-    async function fetchResults(tag: string) {
+    async function fetchResults(term: string) {
       setLoading(true);
       setError(null);
       setFoundProducts([]);
@@ -74,7 +73,7 @@ export default function TagSearchPage() {
 
       const isDevelopment = process.env.NODE_ENV === 'development';
       const baseUrl = isDevelopment ? '/api-proxy' : 'https://test.onlysfree.com/api';
-      const apiUrl = `${baseUrl}/tag/search?tag=${encodeURIComponent(tag)}`;
+      const apiUrl = `${baseUrl}/search?query=${encodeURIComponent(term)}`;
 
       try {
         const response = await fetch(apiUrl, { headers: { 'Accept': 'application/json' } });
@@ -92,11 +91,12 @@ export default function TagSearchPage() {
         }
 
         if ((!data.productos || data.productos.data.length === 0) && (!data.streams || data.streams.data.length === 0)) {
-          // setError(`No results found for tag: "${tag}"`); // Or just show empty sections
+          // Optionally set an error or specific message if no results are found
+          // setError(`No results found for "${term}"`);
         }
 
       } catch (e: any) {
-        console.error(`Failed to fetch search results for tag "${tag}":`, e);
+        console.error(`Failed to fetch search results for query "${term}":`, e);
         let errorMessage = e.message || 'Failed to load search results.';
          if (e.message && e.message.toLowerCase().includes('failed to fetch')) {
             errorMessage = `Network error or CORS issue. Ensure the API server is accessible. Details: ${e.message}`;
@@ -106,12 +106,12 @@ export default function TagSearchPage() {
         setLoading(false);
       }
     }
-  }, [router.isReady, router.query.tag]);
+  }, [router.isReady, router.query.term]);
 
   return (
     <>
       <Head>
-        <title>{searchTerm ? `Tag: ${searchTerm}` : 'Tag Search'} - Venta Rapida</title>
+        <title>{searchTerm ? `Search: ${searchTerm}` : 'Search Results'} - Venta Rapida</title>
       </Head>
       <div className="container mx-auto p-4">
         <Button variant="outline" asChild className="mb-6">
@@ -124,7 +124,7 @@ export default function TagSearchPage() {
         {loading && (
           <div className="text-center py-10">
             <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
-            <p className="text-xl text-muted-foreground">Searching for tag: "{searchTerm}"...</p>
+            <p className="text-xl text-muted-foreground">Searching for: "{searchTerm}"...</p>
           </div>
         )}
 
@@ -138,7 +138,7 @@ export default function TagSearchPage() {
         {!loading && !error && (
           <>
             <h1 className="text-3xl font-bold mb-8 text-foreground">
-              Results for tag: <span className="text-primary">{searchTerm}</span>
+              Search Results for: <span className="text-primary">{searchTerm}</span>
             </h1>
 
             {foundProducts.length > 0 && (
@@ -165,7 +165,7 @@ export default function TagSearchPage() {
 
             {foundProducts.length === 0 && foundStreams.length === 0 && (
               <div className="text-center py-10">
-                <p className="text-xl text-muted-foreground">No products or streams found for the tag "{searchTerm}".</p>
+                <p className="text-xl text-muted-foreground">No products or streams found for "{searchTerm}".</p>
               </div>
             )}
           </>

@@ -1,7 +1,7 @@
-// "use client"; // Eliminado, no es idiomático para Pages Router aquí
 
 import * as React from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/router'; // Import useRouter
 import { Search, UserCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -10,11 +10,13 @@ import { VentaRapidaLogo } from '@/components/icons';
 
 export function SearchableTopbar() {
   const [searchTerm, setSearchTerm] = React.useState('');
+  const router = useRouter(); // Initialize router
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // Implement search logic or navigation
-    console.log('Searching for:', searchTerm);
+    if (searchTerm.trim()) {
+      router.push(`/search/query?term=${encodeURIComponent(searchTerm.trim())}`);
+    }
   };
 
   return (
