@@ -61,6 +61,7 @@ export function SaleCategorySidebar() {
               );
             }
             // Fallback for other categories, if any (currently none)
+            // This part is currently not reached as saleCategories only has 'streamings'
             return (
               <SidebarMenuItem key={category.id}>
                 <Link href={category.href} passHref legacyBehavior>
@@ -89,3 +90,4 @@ export function SaleCategorySidebar() {
     </Sidebar>
   );
 }
+
