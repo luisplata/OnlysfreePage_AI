@@ -26,13 +26,31 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'simp6.jpg.church', // From /api/model/[id] example
+        hostname: 'simp6.jpg.church', // From /api/model/[id] example & /api/hot
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'simp4.jpg.church', // From /api/hot
         port: '',
         pathname: '/**',
       },
       {
         protocol: 'https',
         hostname: 'fs-01.cyberdrop.to', // From /api/ppv
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'thumbs2.redgifs.com', // From /api/popular
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'z.zz.fo', // From /api/popular
         port: '',
         pathname: '/**',
       }

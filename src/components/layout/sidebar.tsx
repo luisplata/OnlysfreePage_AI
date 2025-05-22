@@ -2,7 +2,7 @@
 "use client";
 
 import Link from 'next/link';
-import { useRouter } from 'next/router';
+import { useRouter } from 'next/router'; // Correct hook for Pages Router
 import Image from 'next/image';
 import * as React from 'react'; // Import React for useState and useEffect
 
@@ -24,7 +24,7 @@ import { LogOut, Loader2 } from 'lucide-react';
 import type { Product, ApiHotItem, ApiHotListResponse } from '@/types';
 
 
-// Helper function to transform API Hot item data to Product type
+// Helper function to transform API Hot/Popular item data to Product type
 function transformApiHotItemToProduct(apiHotItem: ApiHotItem): Product {
   const description = apiHotItem.tags || 'No description available.';
   const category = apiHotItem.tags ? apiHotItem.tags.split('-')[0].trim().toLowerCase() || 'general' : 'general';
@@ -55,6 +55,10 @@ export function SaleCategorySidebar() {
   const [loadingHotOffers, setLoadingHotOffers] = React.useState(true);
   const [errorHotOffers, setErrorHotOffers] = React.useState<string | null>(null);
 
+  const [popularOffers, setPopularOffers] = React.useState<Product[]>([]);
+  const [loadingPopularOffers, setLoadingPopularOffers] = React.useState(true);
+  const [errorPopularOffers, setErrorPopularOffers] = React.useState<string | null>(null);
+
   React.useEffect(() => {
     async function fetchHotOffers() {
       setLoadingHotOffers(true);
@@ -70,7 +74,6 @@ export function SaleCategorySidebar() {
           const errorText = await response.text();
           throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
         }
-        // The /api/hot endpoint returns an array directly
         const data: ApiHotListResponse = await response.json(); 
         if (Array.isArray(data)) {
           setHotOffers(data.map(transformApiHotItemToProduct));
@@ -93,6 +96,46 @@ export function SaleCategorySidebar() {
       }
     }
     fetchHotOffers();
+  }, []);
+
+  React.useEffect(() => {
+    async function fetchPopularOffers() {
+      setLoadingPopularOffers(true);
+      setErrorPopularOffers(null);
+      
+      const isDevelopment = process.env.NODE_ENV === 'development';
+      const baseUrl = isDevelopment ? '/api-proxy' : 'https://test.onlysfree.com/api';
+      const apiUrl = `${baseUrl}/popular`;
+
+      try {
+        const response = await fetch(apiUrl);
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+        }
+        // Assuming /api/popular also returns an array directly like /api/hot
+        const data: ApiHotListResponse = await response.json(); 
+        if (Array.isArray(data)) {
+          setPopularOffers(data.map(transformApiHotItemToProduct));
+        } else {
+          throw new Error('API response for popular offers did not contain an array.');
+        }
+      } catch (e: any) {
+        console.error("Failed to fetch popular offers:", e);
+        let errorMessage = e.message || 'Failed to load popular offers.';
+        if (e.message && e.message.includes('Failed to fetch')) {
+            if (isDevelopment) {
+                errorMessage = `Popular Offers: Network error or proxy issue. Details: ${e.message}`;
+            } else {
+                errorMessage = `Popular Offers: Network error or CORS issue. Ensure API server allows requests. Details: ${e.message}`;
+            }
+        }
+        setErrorPopularOffers(errorMessage);
+      } finally {
+        setLoadingPopularOffers(false);
+      }
+    }
+    fetchPopularOffers();
   }, []);
 
 
@@ -182,7 +225,7 @@ export function SaleCategorySidebar() {
               {!loadingHotOffers && !errorHotOffers && hotOffers.map((product) => {
                 const detailPageUrl = `/products/detail?id=${product.id}${product.productType === 'streaming' ? '&type=streaming' : ''}`;
                 return (
-                  <SidebarMenuItem key={product.id}>
+                  <SidebarMenuItem key={`hot-${product.id}`}>
                     <SidebarMenuButton
                       asChild
                       tooltip={{
@@ -202,6 +245,71 @@ export function SaleCategorySidebar() {
                             data-ai-hint="product offer"
                             onError={(e) => {
                               (e.target as HTMLImageElement).src = 'https://placehold.co/40x40.png?text=Error';
+                              (e.target as HTMLImageElement).srcset = '';
+                            }}
+                          />
+                        </div>
+                        <span className="text-xs font-medium line-clamp-2 leading-tight group-data-[collapsible=icon]:hidden">
+                          {product.title}
+                        </span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroup>
+
+          <SidebarSeparator className="my-3" />
+
+           {/* Popular Offers Section */}
+          <SidebarGroup>
+            <SidebarGroupLabel className="mb-1 px-2 text-sidebar-foreground/90 group-data-[collapsible=icon]:sr-only">Popular Offers</SidebarGroupLabel>
+            <SidebarMenu>
+              {loadingPopularOffers && (
+                <SidebarMenuItem className="group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center">
+                  <Loader2 className="h-5 w-5 animate-spin text-sidebar-foreground/70 group-data-[collapsible=expanded]:ml-2" />
+                   <span className="ml-2 text-xs text-sidebar-foreground/70 group-data-[collapsible=icon]:hidden">Loading offers...</span>
+                </SidebarMenuItem>
+              )}
+              {errorPopularOffers && !loadingPopularOffers && (
+                 <SidebarMenuItem className="px-2 text-xs text-destructive group-data-[collapsible=icon]:hidden">
+                   {errorPopularOffers}
+                 </SidebarMenuItem>
+              )}
+              {!loadingPopularOffers && !errorPopularOffers && popularOffers.length === 0 && (
+                <SidebarMenuItem className="px-2 text-xs text-sidebar-foreground/70 group-data-[collapsible=icon]:hidden">
+                  No popular offers available.
+                </SidebarMenuItem>
+              )}
+              {!loadingPopularOffers && !errorPopularOffers && popularOffers.map((product) => {
+                const detailPageUrl = `/products/detail?id=${product.id}${product.productType === 'streaming' ? '&type=streaming' : ''}`;
+                return (
+                  <SidebarMenuItem key={`popular-${product.id}`}>
+                    <SidebarMenuButton
+                      asChild
+                      tooltip={{
+                        content: product.title,
+                        className: "max-w-[200px] text-center",
+                      }}
+                      className="h-auto py-1.5 px-2 text-left group-data-[collapsible=icon]:p-1.5 group-data-[collapsible=icon]:w-full group-data-[collapsible=icon]:h-auto focus-visible:ring-inset"
+                    >
+                      <Link href={detailPageUrl} className="flex items-center gap-2 w-full">
+                        <div className="w-8 h-8 rounded-sm overflow-hidden relative shrink-0 group-data-[collapsible=icon]:w-6 group-data-[collapsible=icon]:h-6">
+                          <Image
+                            src={product.imageUrl || 'https://placehold.co/40x40.png'}
+                            alt={product.title}
+                            fill={true}
+                            sizes="40px"
+                            className="object-cover"
+                            data-ai-hint="popular product" // Slightly different hint
+                            onError={(e) => {
+                              // If image is mp4, next/image will fail. Show a generic placeholder.
+                              if (product.imageUrl && product.imageUrl.endsWith('.mp4')) {
+                                (e.target as HTMLImageElement).src = 'https://placehold.co/40x40.png?text=Video';
+                              } else {
+                                (e.target as HTMLImageElement).src = 'https://placehold.co/40x40.png?text=Error';
+                              }
                               (e.target as HTMLImageElement).srcset = '';
                             }}
                           />
