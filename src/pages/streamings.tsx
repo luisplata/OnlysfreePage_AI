@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -10,74 +10,130 @@ import type { Product, ApiPpvItem, ApiPpvListResponse } from '@/types';
 // Helper function to transform API PPV item data to Product type
 function transformApiPpvItemToProduct(apiPpvItem: ApiPpvItem): Product {
   const description = apiPpvItem.tags || 'No description available.';
-  // Extract a category from tags, e.g., "onlyfans" from "onlyfans-natalie monroe"
   const category = apiPpvItem.tags ? apiPpvItem.tags.split('-')[0].trim().toLowerCase() || 'streaming' : 'streaming';
 
   return {
     id: String(apiPpvItem.id),
     title: apiPpvItem.nombre,
     description: description,
-    imageUrl: apiPpvItem.imagen.trim(), // Ensure no leading/trailing spaces in image URL
+    imageUrl: apiPpvItem.imagen.trim(),
     category: category,
-    productType: 'streaming', // All items from /api/ppv are considered streaming
-    videoUrl: apiPpvItem.url, // The 'url' field from PPV seems to be the direct video link
-    // hotLink: apiPpvItem.url, // Could also use url as hotLink if needed for consistency
+    productType: 'streaming',
+    videoUrl: apiPpvItem.url,
+    hotLink: apiPpvItem.url, // For PPV, the stream URL itself can be the hotLink
   };
 }
 
+// Helper function for fetching page data
+async function fetchPageData(page: number): Promise<ApiPpvListResponse> {
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  const baseUrl = isDevelopment ? '/api-proxy' : 'https://test.onlysfree.com/api';
+  const apiUrl = `${baseUrl}/ppv?page=${page}`;
+
+  const response = await fetch(apiUrl, { headers: { 'Accept': 'application/json' } });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+  }
+  const data: ApiPpvListResponse = await response.json();
+  if (!data || !data.data || typeof data.last_page === 'undefined') {
+    throw new Error('API response for PPV did not contain expected data structure (data array or last_page).');
+  }
+  return data;
+}
+
+
 export default function StreamingsPage() {
   const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1); // Stores the *next* page to fetch
+  const [hasMore, setHasMore] = useState(true);
 
+
+  // Initial data load (first page)
   useEffect(() => {
-    async function fetchStreamings() {
-      setLoading(true);
+    async function loadInitialStreamings() {
+      setInitialLoading(true);
       setError(null);
-      
-      const isDevelopment = process.env.NODE_ENV === 'development';
-      // Use proxy for development, direct API URL for production/static export
-      const apiUrl = isDevelopment 
-        ? '/api-proxy/ppv' 
-        : 'https://test.onlysfree.com/api/ppv';
+      setHasMore(true);
+      setCurrentPage(1); // Reset current page for initial load
 
       try {
-        const response = await fetch(apiUrl, { 
-          headers: { 
-            'Accept': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
-        }
+        const page1Response = await fetchPageData(1);
+        setProducts(page1Response.data.map(transformApiPpvItemToProduct));
         
-        const data: ApiPpvListResponse = await response.json();
-        
-        if (data && data.data) {
-          setProducts(data.data.map(transformApiPpvItemToProduct));
+        if (page1Response.next_page_url != null && 1 < page1Response.last_page) {
+          setCurrentPage(2);
+          setHasMore(true);
         } else {
-          throw new Error('API response did not contain expected data structure for PPV items (expected "data" array).');
+          setHasMore(false);
         }
       } catch (e: any) {
-        console.error("Failed to fetch streaming products:", e);
-        let errorMessage = e.message || 'Failed to load streaming products.';
-        
+        console.error("Failed to fetch initial streamings:", e);
+        let errorMessage = e.message || 'Failed to load streamings.';
         if (e.message && e.message.toLowerCase().includes('failed to fetch')) {
-            errorMessage = 'Network error or CORS issue. Ensure the API server (https://test.onlysfree.com) is accessible and CORS is configured correctly if running a static build. For development, check proxy settings.';
+          const isDevelopmentEnv = process.env.NODE_ENV === 'development';
+          if (!isDevelopmentEnv) {
+            errorMessage = `Network error or CORS issue. Ensure the API server (https://test.onlysfree.com) is accessible and CORS is configured for your deployment domain. Details: ${e.message}`;
+          } else {
+            errorMessage = `Network error. Ensure the API server (https://test.onlysfree.com) is accessible and the development proxy targeting /api-proxy is working correctly. Details: ${e.message}`;
+          }
         } else if (e.message && e.message.includes('HTTP error! status: 404')) {
-          errorMessage = 'Could not find the streaming products (404). The API endpoint might be incorrect or temporarily unavailable.';
+          errorMessage = 'Could not find streaming products (404). The API endpoint might be incorrect or temporarily unavailable.';
         }
         setError(errorMessage);
+        setHasMore(false);
       } finally {
-        setLoading(false);
+        setInitialLoading(false);
       }
     }
-    fetchStreamings();
+    loadInitialStreamings();
   }, []);
 
-  if (loading) {
+  const loadMoreProducts = useCallback(async () => {
+    if (loadingMore || !hasMore || initialLoading) return;
+
+    setLoadingMore(true);
+    try {
+      const pageResponse = await fetchPageData(currentPage);
+      setProducts(prevProducts => [
+        ...prevProducts,
+        ...pageResponse.data.map(transformApiPpvItemToProduct)
+      ]);
+      
+      if (pageResponse.next_page_url != null && currentPage < pageResponse.last_page) {
+        setCurrentPage(prev => prev + 1);
+        setHasMore(true);
+      } else {
+        setHasMore(false);
+      }
+    } catch (e: any) {
+      console.error(`Failed to load more streamings (page ${currentPage}):`, e);
+      setError(`Failed to load page ${currentPage}. Further loading may be affected.`);
+      // Optionally setHasMore(false) here if a subsequent page fails, to stop further attempts.
+      // Or allow retries by not setting it to false. For now, let's keep it as is.
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [currentPage, hasMore, loadingMore, initialLoading]);
+
+  const handleScroll = useCallback(() => {
+    // Check if the user is near the bottom of the page
+    const nearBottom = window.innerHeight + document.documentElement.scrollTop + 300 >= document.documentElement.offsetHeight;
+    if (nearBottom && hasMore && !loadingMore && !initialLoading) {
+      loadMoreProducts();
+    }
+  }, [hasMore, loadingMore, initialLoading, loadMoreProducts]);
+
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [handleScroll]);
+
+
+  if (initialLoading) {
     return (
       <div className="container mx-auto py-8 text-center flex flex-col items-center justify-center min-h-[calc(100vh-200px)]">
         <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
@@ -86,7 +142,7 @@ export default function StreamingsPage() {
     );
   }
 
-  if (error) {
+  if (error && products.length === 0) {
     return (
       <div className="container mx-auto py-8 text-center">
         <h1 className="text-3xl font-bold text-destructive mb-4">Error Loading Streams</h1>
@@ -101,7 +157,7 @@ export default function StreamingsPage() {
     );
   }
 
-  if (products.length === 0) {
+  if (products.length === 0 && !error) {
     return (
       <div className="container mx-auto py-8 text-center">
         <Head>
@@ -135,9 +191,25 @@ export default function StreamingsPage() {
         <h1 className="text-3xl font-bold mb-8 text-foreground text-center sm:text-left">Featured Streams</h1>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
+            <ProductCard key={`${product.id}-${product.title}`} product={product} />
           ))}
         </div>
+        {loadingMore && (
+          <div className="py-8 text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+            <p className="text-muted-foreground mt-2">Loading more streams...</p>
+          </div>
+        )}
+        {!hasMore && products.length > 0 && !initialLoading && (
+          <div className="py-8 text-center">
+            <p className="text-muted-foreground">You've reached the end of the streams!</p>
+          </div>
+        )}
+         {error && products.length > 0 && (
+          <div className="py-8 text-center text-destructive">
+            <p>{error}</p>
+          </div>
+        )}
       </div>
     </>
   );
