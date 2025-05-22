@@ -17,7 +17,7 @@ function transformApiPpvItemToProduct(apiPpvItem: ApiPpvItem): Product {
     id: String(apiPpvItem.id),
     title: apiPpvItem.nombre,
     description: description,
-    imageUrl: apiPpvItem.imagen,
+    imageUrl: apiPpvItem.imagen.trim(), // Ensure no leading/trailing spaces in image URL
     category: category,
     productType: 'streaming', // All items from /api/ppv are considered streaming
     videoUrl: apiPpvItem.url, // The 'url' field from PPV seems to be the direct video link
@@ -36,29 +36,37 @@ export default function StreamingsPage() {
       setError(null);
       
       const isDevelopment = process.env.NODE_ENV === 'development';
+      // Use proxy for development, direct API URL for production/static export
       const apiUrl = isDevelopment 
         ? '/api-proxy/ppv' 
         : 'https://test.onlysfree.com/api/ppv';
 
       try {
-        const response = await fetch(apiUrl, { headers: { 'Accept': 'application/json' } });
+        const response = await fetch(apiUrl, { 
+          headers: { 
+            'Accept': 'application/json',
+          },
+        });
+
         if (!response.ok) {
           const errorText = await response.text();
           throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
         }
+        
         const data: ApiPpvListResponse = await response.json();
+        
         if (data && data.data) {
           setProducts(data.data.map(transformApiPpvItemToProduct));
         } else {
-          throw new Error('API response did not contain expected data structure for PPV items.');
+          throw new Error('API response did not contain expected data structure for PPV items (expected "data" array).');
         }
       } catch (e: any) {
         console.error("Failed to fetch streaming products:", e);
         let errorMessage = e.message || 'Failed to load streaming products.';
-        if (e.message && e.message.includes('Failed to fetch')) {
-            errorMessage += '\nThis might be a CORS issue if the API server is not configured to allow requests from this domain, or a network connectivity problem.';
-        }
-         if (e.message && e.message.includes('HTTP error! status: 404')) {
+        
+        if (e.message && e.message.toLowerCase().includes('failed to fetch')) {
+            errorMessage = 'Network error or CORS issue. Ensure the API server (https://test.onlysfree.com) is accessible and CORS is configured correctly if running a static build. For development, check proxy settings.';
+        } else if (e.message && e.message.includes('HTTP error! status: 404')) {
           errorMessage = 'Could not find the streaming products (404). The API endpoint might be incorrect or temporarily unavailable.';
         }
         setError(errorMessage);
@@ -82,7 +90,7 @@ export default function StreamingsPage() {
     return (
       <div className="container mx-auto py-8 text-center">
         <h1 className="text-3xl font-bold text-destructive mb-4">Error Loading Streams</h1>
-        <p className="text-xl text-muted-foreground whitespace-pre-wrap">{error}</p>
+        <p className="text-xl text-muted-foreground whitespace-pre-wrap px-4">{error}</p>
          <Button variant="outline" asChild className="mt-6">
           <Link href="/">
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -115,6 +123,7 @@ export default function StreamingsPage() {
     <>
       <Head>
         <title>Streamings - Venta Rapida</title>
+        <meta name="description" content="Featured streaming content available on Venta Rapida." />
       </Head>
       <div className="container mx-auto p-4">
         <Button variant="outline" asChild className="mb-6">
