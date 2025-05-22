@@ -2,8 +2,7 @@
 "use client";
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation'; // Corrected import for App Router
-// For Pages Router, you'd use: import { useRouter } from 'next/router'; and then const router = useRouter(); const pathname = router.pathname;
+import { useRouter } from 'next/router'; // Corrected for Pages Router
 
 import {
   Sidebar,
@@ -13,30 +12,20 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarFooter,
-  // SidebarSeparator, // Commented out as featured products are removed for now
-  // SidebarGroup, // Commented out
-  // SidebarGroupLabel, // Commented out
+  // SidebarSeparator, // No longer used as mockProducts are removed
+  // SidebarGroup,
+  // SidebarGroupLabel,
 } from '@/components/ui/sidebar';
 import { VentaRapidaLogo } from '@/components/icons';
-import { saleCategories } from '@/data/mock-data'; // Keep saleCategories for now
-// import type { Product } from '@/types'; // Commented out as featured products are removed
-// import Image from 'next/image'; // Commented out
-import { Button } from '@/components/ui/button';
+import { saleCategories } from '@/data/mock-data';
+// import type { Product } from '@/types'; // No longer used here
+// import Image from 'next/image'; // No longer used here
+// import { Button } from '@/components/ui/button'; // No longer used here
 import { LogOut } from 'lucide-react';
 
-// const featuredProductsCount = 3; // Commented out
-
 export function SaleCategorySidebar() {
-  const pathname = usePathname(); // For App Router. If you are truly on Pages Router, this needs to change.
-                                  // Assuming you might revert or for future App Router use.
-                                  // For Pages Router:
-                                  // import { useRouter } from 'next/router';
-                                  // const router = useRouter();
-                                  // const pathname = router.pathname;
-
-
-  // Select a few products to feature - This section is removed for now
-  // const productsToFeature: Product[] = []; // mockProducts.slice(0, featuredProductsCount);
+  const router = useRouter();
+  const pathname = router.pathname;
 
   return (
     <Sidebar collapsible="icon">
@@ -50,58 +39,34 @@ export function SaleCategorySidebar() {
           {saleCategories.map((category) => (
             <SidebarMenuItem key={category.id}>
               <Link href={category.href} passHref>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname === category.href}
-                  tooltip={category.name}
-                >
-                  <>
-                    <category.icon />
-                    <span>{category.name}</span>
-                  </>
-                </SidebarMenuButton>
+                {category.id === 'streamings' ? (
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname === category.href}
+                    tooltip={category.name}
+                    className="h-auto py-4 flex flex-col items-center justify-center text-center group-data-[collapsible=icon]:!size-auto group-data-[collapsible=icon]:p-2" // Custom classes for Streamings card
+                  >
+                    <>
+                      <category.icon className="h-10 w-10 mb-1 group-data-[collapsible=icon]:h-6 group-data-[collapsible=icon]:w-6 group-data-[collapsible=icon]:mb-0" /> {/* Larger icon */}
+                      <span className="text-sm font-medium group-data-[collapsible=icon]:hidden">{category.name}</span>
+                    </>
+                  </SidebarMenuButton>
+                ) : (
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname === category.href}
+                    tooltip={category.name}
+                  >
+                    <>
+                      <category.icon /> {/* Default icon size */}
+                      <span>{category.name}</span>
+                    </>
+                  </SidebarMenuButton>
+                )}
               </Link>
             </SidebarMenuItem>
           ))}
         </SidebarMenu>
-
-        {/* Featured Products Section Removed for API integration focus */}
-        {/* {productsToFeature.length > 0 && (
-          <>
-            <SidebarSeparator />
-            <SidebarGroup>
-              <SidebarGroupLabel>Featured Products</SidebarGroupLabel>
-              <SidebarMenu>
-                {productsToFeature.map((product) => (
-                  <SidebarMenuItem key={product.id}>
-                    <Link href={`/products/${product.id}`} passHref>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={pathname === `/products/${product.id}`}
-                        tooltip={product.title}
-                        className="h-auto py-3"
-                      >
-                        <>
-                          <Image
-                            src={product.imageUrl}
-                            alt={product.title}
-                            width={36}
-                            height={36}
-                            className="rounded-md object-cover flex-shrink-0"
-                            data-ai-hint={`${product.category} thumbnail`}
-                          />
-                          <span className="line-clamp-2 leading-snug text-sm"> 
-                            {product.title}
-                          </span>
-                        </>
-                      </SidebarMenuButton>
-                    </Link>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroup>
-          </>
-        )} */}
       </SidebarContent>
       <SidebarFooter className="p-2">
          <SidebarMenuButton tooltip="Logout">
