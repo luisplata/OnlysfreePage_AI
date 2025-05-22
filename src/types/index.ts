@@ -6,15 +6,18 @@ export interface ApiPack {
   id: number;
   nombre: string;
   imagen: string;
-  NombreLink: string;
+  NombreLink: string; // This might be useful for display if different from 'nombre'
   hotLink: string;
   isVideo: string; // "0", "1", or ""
   url_video: string;  // Video URL if isVideo is "1" for /api/packs
   tags: string;
   visitas?: object; // Specific to /api/model/[id] response
+  // Fields from tag search 'productos' items
+  producto_id?: string; // Can exist in some contexts, like tag search results
 }
 
 // Interface for items from /api/ppv (list and single item detail)
+// Also used for items in 'streams.data' from tag search
 export interface ApiPpvItem {
   id: number;
   nombre: string;
@@ -28,8 +31,8 @@ export interface ApiPpvItem {
 }
 
 // Interface for items from /api/hot and /api/popular
-export interface ApiHotItem { // Also used for Popular items as structure is similar
-  id: number; 
+export interface ApiHotItem {
+  id: number;
   nombre: string;
   imagen: string;
   NombreLink: string;
@@ -45,7 +48,7 @@ export interface ApiHotItem { // Also used for Popular items as structure is sim
 
 // Generic Product interface to be used in the UI
 export interface Product {
-  id: string;
+  id: string; // Ensure this is the ID used for linking to detail page
   title: string;
   description: string;
   imageUrl: string;
@@ -94,4 +97,10 @@ export interface ApiTagsResponse {
 export interface Tag {
   id: string;
   name: string;
+}
+
+// API response for /api/tag/search
+export interface ApiTagSearchResponse {
+  productos: ApiPackListResponse; // Contains ApiPack items in its 'data' array
+  streams: ApiPpvListResponse;    // Contains ApiPpvItem items in its 'data' array
 }

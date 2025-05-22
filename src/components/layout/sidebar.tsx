@@ -2,7 +2,7 @@
 "use client";
 
 import Link from 'next/link';
-import { useRouter } from 'next/router'; // Corrected import for Pages Router
+import { useRouter } from 'next/router';
 import Image from 'next/image';
 import * as React from 'react';
 
@@ -63,7 +63,7 @@ function shuffleArray<T>(array: T[]): T[] {
 
 export function SaleCategorySidebar() {
   const router = useRouter();
-  const pathname = router.pathname;
+  const { pathname } = router; // Use router from next/router for Pages Router
 
   const streamingsCategory = saleCategories.find(cat => cat.id === 'streamings');
 
@@ -168,7 +168,8 @@ export function SaleCategorySidebar() {
         const allTags = transformApiTagsResponseToArray(data);
         const shuffledTags = shuffleArray(allTags);
         setTags(shuffledTags.slice(0, 10)); // Get first 10 random tags
-      } catch (e: any) {
+      } catch (e: any)
+      {
         console.error("Failed to fetch tags:", e);
         let errorMessage = e.message || 'Failed to load tags.';
         if (e.message && e.message.includes('Failed to fetch')) {
@@ -194,7 +195,7 @@ export function SaleCategorySidebar() {
         <SidebarMenu>
           {streamingsCategory && (
             <SidebarMenuItem>
-               <SidebarMenuButton
+              <SidebarMenuButton
                 asChild
                 isActive={pathname === streamingsCategory.href}
                 tooltip={streamingsCategory.name}
@@ -392,7 +393,7 @@ export function SaleCategorySidebar() {
                     key={`tag-${tag.id}`}
                     variant="secondary"
                     className="m-1 cursor-pointer hover:bg-accent hover:text-accent-foreground"
-                    onClick={() => { /* Future: handle tag click, e.g., filter products by tag */ }}
+                    onClick={() => router.push(`/search/tag?tag=${encodeURIComponent(tag.name)}`)}
                     title={tag.name}
                   >
                     {tag.name}
