@@ -21,7 +21,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { VentaRapidaLogo } from '@/components/icons';
 import { saleCategories } from '@/data/mock-data';
-import { Loader2, Tag as TagIcon } from 'lucide-react'; // Renamed Tag from lucide-react to TagIcon to avoid conflict
+import { Loader2, Tag as TagIcon } from 'lucide-react';
 import type { Product, ApiHotItem, ApiHotListResponse, ApiTagsResponse, Tag } from '@/types';
 
 
@@ -47,6 +47,16 @@ function transformApiTagsResponseToArray(apiTags: ApiTagsResponse): Tag[] {
     .map(([id, name]) => ({ id, name }))
     .filter(tag => tag.name && tag.name.trim() !== "") // Filter out tags with empty names
     .sort((a, b) => a.name.localeCompare(b.name)); // Sort tags alphabetically
+}
+
+// Fisher-Yates shuffle algorithm
+function shuffleArray<T>(array: T[]): T[] {
+  const newArray = [...array];
+  for (let i = newArray.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [newArray[i], newArray[j]] = [newArray[j], newArray[i]]; // swap elements
+  }
+  return newArray;
 }
 
 
@@ -154,7 +164,9 @@ export function SaleCategorySidebar() {
           throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
         }
         const data: ApiTagsResponse = await response.json();
-        setTags(transformApiTagsResponseToArray(data));
+        const allTags = transformApiTagsResponseToArray(data);
+        const shuffledTags = shuffleArray(allTags);
+        setTags(shuffledTags.slice(0, 10)); // Get first 10 random tags
       } catch (e: any) {
         console.error("Failed to fetch tags:", e);
         let errorMessage = e.message || 'Failed to load tags.';
@@ -360,8 +372,8 @@ export function SaleCategorySidebar() {
           {/* Tags Section */}
           <SidebarGroup>
             <SidebarGroupLabel className="mb-1 px-2 text-sidebar-foreground/90 group-data-[collapsible=icon]:sr-only">Tags</SidebarGroupLabel>
-            <ScrollArea className="h-[200px] group-data-[collapsible=icon]:hidden"> {/* Adjust height as needed */}
-              <SidebarMenu className="pr-2 py-1"> {/* Padding for scrollbar */}
+            <ScrollArea className="h-[200px] group-data-[collapsible=icon]:hidden">
+              <SidebarMenu className="pr-2 py-1">
                 {loadingTags && (
                   <SidebarMenuItem className="group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center">
                     <Loader2 className="h-5 w-5 animate-spin text-sidebar-foreground/70 group-data-[collapsible=expanded]:ml-2" />
@@ -381,14 +393,11 @@ export function SaleCategorySidebar() {
                 {!loadingTags && !errorTags && tags.map((tag) => (
                   <SidebarMenuItem key={`tag-${tag.id}`}>
                     <SidebarMenuButton
-                      // For now, tags don't navigate. Replace with Link if navigation is needed.
-                      // asChild
                       tooltip={{
                         content: tag.name,
                         className: "max-w-[200px] text-center",
                       }}
                       className="h-auto py-1 px-2 text-left text-xs group-data-[collapsible=icon]:p-1.5 group-data-[collapsible=icon]:w-full group-data-[collapsible=icon]:h-auto focus-visible:ring-inset"
-                      // onClick={() => console.log("Tag clicked:", tag.name)} // Placeholder action
                     >
                       {/* <TagIcon className="mr-2 h-3 w-3 text-sidebar-foreground/80" /> */}
                       <span className="truncate group-data-[collapsible=icon]:hidden">
@@ -399,14 +408,7 @@ export function SaleCategorySidebar() {
                 ))}
               </SidebarMenu>
             </ScrollArea>
-             {/* Tooltip for "Tags" when collapsed */}
-            <SidebarMenu className="group-data-[collapsible=expanded]:hidden">
-                <SidebarMenuItem>
-                    <SidebarMenuButton tooltip="Tags" className="justify-center">
-                        <TagIcon className="h-5 w-5" />
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-            </SidebarMenu>
+            {/* The collapsed view for tags icon is now removed */}
           </SidebarGroup>
 
         </SidebarMenu>
@@ -417,3 +419,4 @@ export function SaleCategorySidebar() {
     </Sidebar>
   );
 }
+
