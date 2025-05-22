@@ -5,7 +5,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ProductCard } from '@/components/product-card';
-import type { Product, ApiCategorizedSearchResultsResponse, ApiPack, ApiPpvItem, ApiPackListResponse, ApiPpvListResponse } from '@/types';
+import type { Product, ApiCategorizedSearchResultsResponse, ApiPack, ApiPpvItem } from '@/types';
 import { Loader2, ArrowLeft } from 'lucide-react';
 
 // Helper function to transform API pack data (from search results 'productos') to Product type
@@ -46,23 +46,21 @@ function transformApiPpvItemToProduct(apiPpvItem: ApiPpvItem): Product {
 
 export default function TagSearchPage() {
   const router = useRouter();
-  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [tag, setTag] = useState<string>('');
   
-  const [foundProducts, setFoundProducts] = useState<Product[]>([]);
-  const [foundStreams, setFoundStreams] = useState<Product[]>([]);
+  const [combinedResults, setCombinedResults] = useState<Product[]>([]);
   
   const [initialLoading, setInitialLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [baseApiUrl, setBaseApiUrl] = useState<string>('');
 
   const [currentPageProducts, setCurrentPageProducts] = useState(1);
   const [hasMoreProducts, setHasMoreProducts] = useState(true);
-  const [loadingMoreProducts, setLoadingMoreProducts] = useState(false);
 
   const [currentPageStreams, setCurrentPageStreams] = useState(1);
   const [hasMoreStreams, setHasMoreStreams] = useState(true);
-  const [loadingMoreStreams, setLoadingMoreStreams] = useState(false);
 
   useEffect(() => {
     if (!router.isReady) return;
@@ -71,7 +69,7 @@ export default function TagSearchPage() {
 
     if (typeof tagQuery === 'string' && tagQuery.trim() !== '') {
       const decodedTag = decodeURIComponent(tagQuery.trim());
-      setSearchTerm(decodedTag);
+      setTag(decodedTag);
       
       const isDevelopment = process.env.NODE_ENV === 'development';
       const apiUrlDomain = isDevelopment ? '/api-proxy' : 'https://test.onlysfree.com/api';
@@ -87,36 +85,47 @@ export default function TagSearchPage() {
     async function fetchInitialResults(url: string) {
       setInitialLoading(true);
       setError(null);
-      setFoundProducts([]);
-      setFoundStreams([]);
-      setCurrentPageProducts(1);
+      setCombinedResults([]);
+      setCurrentPageProducts(1); // Reset for new search
       setHasMoreProducts(true);
-      setCurrentPageStreams(1);
+      setCurrentPageStreams(1); // Reset for new search
       setHasMoreStreams(true);
 
       try {
-        const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+        // Fetch page 1 of products
+        const productsUrl = `${url}&productos_page=1`;
+        const productsResponse = await fetch(productsUrl, { headers: { 'Accept': 'application/json' } });
+        if (!productsResponse.ok) {
+          throw new Error(`HTTP error fetching initial products! status: ${productsResponse.status}, message: ${await productsResponse.text()}`);
         }
-        const data: ApiCategorizedSearchResultsResponse = await response.json();
-
-        if (data.productos && data.productos.data) {
-          setFoundProducts(data.productos.data.map(transformApiPackToProduct));
-          setCurrentPageProducts(data.productos.current_page + 1);
-          setHasMoreProducts(data.productos.next_page_url != null && data.productos.current_page < data.productos.last_page);
+        const productsData: ApiCategorizedSearchResultsResponse = await productsResponse.json();
+        
+        let initialItems: Product[] = [];
+        if (productsData.productos && productsData.productos.data) {
+          initialItems = [...initialItems, ...productsData.productos.data.map(transformApiPackToProduct)];
+          setCurrentPageProducts(productsData.productos.current_page + 1);
+          setHasMoreProducts(productsData.productos.next_page_url != null && productsData.productos.current_page < productsData.productos.last_page);
         } else {
           setHasMoreProducts(false);
         }
 
-        if (data.streams && data.streams.data) {
-          setFoundStreams(data.streams.data.map(transformApiPpvItemToProduct));
-          setCurrentPageStreams(data.streams.current_page + 1);
-          setHasMoreStreams(data.streams.next_page_url != null && data.streams.current_page < data.streams.last_page);
+        // Fetch page 1 of streams
+        const streamsUrl = `${url}&streams_page=1`;
+        const streamsResponse = await fetch(streamsUrl, { headers: { 'Accept': 'application/json' } });
+         if (!streamsResponse.ok) {
+          throw new Error(`HTTP error fetching initial streams! status: ${streamsResponse.status}, message: ${await streamsResponse.text()}`);
+        }
+        const streamsData: ApiCategorizedSearchResultsResponse = await streamsResponse.json();
+
+        if (streamsData.streams && streamsData.streams.data) {
+          initialItems = [...initialItems, ...streamsData.streams.data.map(transformApiPpvItemToProduct)];
+          setCurrentPageStreams(streamsData.streams.current_page + 1);
+          setHasMoreStreams(streamsData.streams.next_page_url != null && streamsData.streams.current_page < streamsData.streams.last_page);
         } else {
           setHasMoreStreams(false);
         }
+        
+        setCombinedResults(initialItems);
         
       } catch (e: any) {
         console.error(`Failed to fetch initial search results for tag "${decodeURIComponent(tagQuery as string)}":`, e);
@@ -133,70 +142,68 @@ export default function TagSearchPage() {
     }
   }, [router.isReady, router.query.tag]);
 
-  const loadMoreProductsData = useCallback(async () => {
-    if (!hasMoreProducts || loadingMoreProducts || initialLoading || !baseApiUrl) return;
+  const loadMoreResults = useCallback(async () => {
+    if (loadingMore || initialLoading || !baseApiUrl) return;
+    if (!hasMoreProducts && !hasMoreStreams) return;
 
-    setLoadingMoreProducts(true);
+    setLoadingMore(true);
+    let newItems: Product[] = [];
+
     try {
-      const url = `${baseApiUrl}&productos_page=${currentPageProducts}`;
-      const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
-      if (!response.ok) throw new Error(`Failed to fetch more products: ${response.status}`);
-      const data: ApiCategorizedSearchResultsResponse = await response.json();
-      
-      if (data.productos && data.productos.data) {
-        setFoundProducts(prev => [...prev, ...data.productos.data.map(transformApiPackToProduct)]);
-        setCurrentPageProducts(data.productos.current_page + 1);
-        setHasMoreProducts(data.productos.next_page_url != null && data.productos.current_page < data.productos.last_page);
-      } else {
-        setHasMoreProducts(false);
+      if (hasMoreProducts) {
+        const productsUrl = `${baseApiUrl}&productos_page=${currentPageProducts}`;
+        const productsRes = await fetch(productsUrl, { headers: { 'Accept': 'application/json' } });
+        if (!productsRes.ok) throw new Error(`Failed to fetch products page ${currentPageProducts}: ${await productsRes.text()}`);
+        const productsData: ApiCategorizedSearchResultsResponse = await productsRes.json();
+
+        if (productsData.productos && productsData.productos.data) {
+          newItems = [...newItems, ...productsData.productos.data.map(transformApiPackToProduct)];
+          setHasMoreProducts(productsData.productos.next_page_url != null && productsData.productos.current_page < productsData.productos.last_page);
+          setCurrentPageProducts(productsData.productos.current_page + 1);
+        } else {
+          setHasMoreProducts(false);
+        }
       }
-    } catch (e: any) {
-      console.error("Error loading more products:", e.message);
-      setError("Failed to load more products. " + e.message);
-      // setHasMoreProducts(false); // Optionally stop trying on error
-    } finally {
-      setLoadingMoreProducts(false);
-    }
-  }, [baseApiUrl, currentPageProducts, hasMoreProducts, loadingMoreProducts, initialLoading]);
 
-  const loadMoreStreamsData = useCallback(async () => {
-    if (!hasMoreStreams || loadingMoreStreams || initialLoading || !baseApiUrl) return;
+      if (hasMoreStreams) {
+        const streamsUrl = `${baseApiUrl}&streams_page=${currentPageStreams}`;
+        const streamsRes = await fetch(streamsUrl, { headers: { 'Accept': 'application/json' } });
+        if (!streamsRes.ok) throw new Error(`Failed to fetch streams page ${currentPageStreams}: ${await streamsRes.text()}`);
+        const streamsData: ApiCategorizedSearchResultsResponse = await streamsRes.json();
 
-    setLoadingMoreStreams(true);
-    try {
-      const url = `${baseApiUrl}&streams_page=${currentPageStreams}`;
-      const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
-      if (!response.ok) throw new Error(`Failed to fetch more streams: ${response.status}`);
-      const data: ApiCategorizedSearchResultsResponse = await response.json();
-
-      if (data.streams && data.streams.data) {
-        setFoundStreams(prev => [...prev, ...data.streams.data.map(transformApiPpvItemToProduct)]);
-        setCurrentPageStreams(data.streams.current_page + 1);
-        setHasMoreStreams(data.streams.next_page_url != null && data.streams.current_page < data.streams.last_page);
-      } else {
-        setHasMoreStreams(false);
+        if (streamsData.streams && streamsData.streams.data) {
+          newItems = [...newItems, ...streamsData.streams.data.map(transformApiPpvItemToProduct)];
+          setHasMoreStreams(streamsData.streams.next_page_url != null && streamsData.streams.current_page < streamsData.streams.last_page);
+          setCurrentPageStreams(streamsData.streams.current_page + 1);
+        } else {
+          setHasMoreStreams(false);
+        }
       }
+
+      setCombinedResults(prev => [...prev, ...newItems]);
+
     } catch (e: any) {
-      console.error("Error loading more streams:", e.message);
-      setError("Failed to load more streams. " + e.message);
-      // setHasMoreStreams(false); // Optionally stop trying on error
+      console.error("Error loading more results:", e.message);
+      setError("Failed to load more results. " + e.message);
     } finally {
-      setLoadingMoreStreams(false);
+      setLoadingMore(false);
     }
-  }, [baseApiUrl, currentPageStreams, hasMoreStreams, loadingMoreStreams, initialLoading]);
+  }, [
+    baseApiUrl,
+    currentPageProducts,
+    currentPageStreams,
+    hasMoreProducts,
+    hasMoreStreams,
+    loadingMore,
+    initialLoading
+  ]);
 
   const handleScroll = useCallback(() => {
     const nearBottom = window.innerHeight + document.documentElement.scrollTop + 300 >= document.documentElement.offsetHeight;
-    if (nearBottom) {
-      if (hasMoreProducts && !loadingMoreProducts) {
-        loadMoreProductsData();
-      }
-      if (hasMoreStreams && !loadingMoreStreams) {
-        // Add a small delay or check if products are also loading to avoid simultaneous fetches if preferred
-        loadMoreStreamsData();
-      }
+    if (nearBottom && !loadingMore && (hasMoreProducts || hasMoreStreams)) {
+      loadMoreResults();
     }
-  }, [hasMoreProducts, loadingMoreProducts, loadMoreProductsData, hasMoreStreams, loadingMoreStreams, loadMoreStreamsData]);
+  }, [loadingMore, hasMoreProducts, hasMoreStreams, loadMoreResults]);
 
   useEffect(() => {
     window.addEventListener('scroll', handleScroll);
@@ -207,7 +214,7 @@ export default function TagSearchPage() {
   return (
     <>
       <Head>
-        <title>{searchTerm ? `Tag: ${searchTerm}` : 'Tag Search'} - Venta Rapida</title>
+        <title>{tag ? `Tag: ${tag}` : 'Tag Search'} - Venta Rapida</title>
       </Head>
       <div className="container mx-auto p-4">
         <Button variant="outline" asChild className="mb-6">
@@ -220,7 +227,7 @@ export default function TagSearchPage() {
         {initialLoading && (
           <div className="text-center py-10">
             <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
-            <p className="text-xl text-muted-foreground">Searching for tag: "{searchTerm}"...</p>
+            <p className="text-xl text-muted-foreground">Searching for tag: "{tag}"...</p>
           </div>
         )}
 
@@ -234,56 +241,29 @@ export default function TagSearchPage() {
         {!initialLoading && !error && (
           <>
             <h1 className="text-3xl font-bold mb-8 text-foreground">
-              Results for tag: <span className="text-primary">{searchTerm}</span>
+              Results for tag: <span className="text-primary">{tag}</span>
             </h1>
 
-            {foundProducts.length > 0 && (
-              <section className="mb-12">
-                <h2 className="text-2xl font-semibold mb-6 text-foreground">Products</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                  {foundProducts.map((product) => (
-                    <ProductCard key={`prod-${product.id}-${product.title}`} product={product} />
-                  ))}
-                </div>
-                {loadingMoreProducts && (
-                  <div className="py-8 text-center">
+            {combinedResults.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                {combinedResults.map((product) => (
+                  <ProductCard key={`${product.productType}-${product.id}-${product.title}`} product={product} />
+                ))}
+                {loadingMore && (
+                  <div className="py-8 text-center col-span-full">
                     <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-                    <p className="text-muted-foreground mt-2">Loading more products...</p>
+                    <p className="text-muted-foreground mt-2">Loading more results...</p>
                   </div>
                 )}
-                {!hasMoreProducts && foundProducts.length > 0 && !loadingMoreProducts && (
-                  <div className="py-8 text-center">
-                    <p className="text-muted-foreground">All products shown for this tag.</p>
+                {!hasMoreProducts && !hasMoreStreams && combinedResults.length > 0 && !initialLoading && !loadingMore && (
+                  <div className="py-8 text-center col-span-full">
+                    <p className="text-muted-foreground">All results shown for this tag.</p>
                   </div>
                 )}
-              </section>
-            )}
-
-            {foundStreams.length > 0 && (
-              <section>
-                <h2 className="text-2xl font-semibold mb-6 text-foreground">Streams</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                  {foundStreams.map((product) => (
-                    <ProductCard key={`stream-${product.id}-${product.title}`} product={product} />
-                  ))}
-                </div>
-                {loadingMoreStreams && (
-                  <div className="py-8 text-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-                    <p className="text-muted-foreground mt-2">Loading more streams...</p>
-                  </div>
-                )}
-                {!hasMoreStreams && foundStreams.length > 0 && !loadingMoreStreams && (
-                  <div className="py-8 text-center">
-                    <p className="text-muted-foreground">All streams shown for this tag.</p>
-                  </div>
-                )}
-              </section>
-            )}
-
-            {foundProducts.length === 0 && foundStreams.length === 0 && (
+              </div>
+            ) : (
               <div className="text-center py-10">
-                <p className="text-xl text-muted-foreground">No products or streams found for the tag "{searchTerm}".</p>
+                <p className="text-xl text-muted-foreground">No products or streams found for the tag "{tag}".</p>
               </div>
             )}
           </>
