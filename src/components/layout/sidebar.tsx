@@ -3,6 +3,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/router'; // Corrected for Pages Router
+import Image from 'next/image'; // Added for the image card
 
 import {
   Sidebar,
@@ -12,20 +13,14 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarFooter,
-  // SidebarSeparator, // No longer used as mockProducts are removed
-  // SidebarGroup,
-  // SidebarGroupLabel,
 } from '@/components/ui/sidebar';
 import { VentaRapidaLogo } from '@/components/icons';
 import { saleCategories } from '@/data/mock-data';
-// import type { Product } from '@/types'; // No longer used here
-// import Image from 'next/image'; // No longer used here
-// import { Button } from '@/components/ui/button'; // No longer used here
 import { LogOut } from 'lucide-react';
 
 export function SaleCategorySidebar() {
-  const router = useRouter();
-  const pathname = router.pathname;
+  const router = useRouter(); // Corrected for Pages Router
+  const pathname = router.pathname; // Corrected for Pages Router
 
   return (
     <Sidebar collapsible="icon">
@@ -36,36 +31,53 @@ export function SaleCategorySidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>
-          {saleCategories.map((category) => (
-            <SidebarMenuItem key={category.id}>
-              <Link href={category.href} passHref>
-                {category.id === 'streamings' ? (
+          {saleCategories.map((category) => {
+            if (category.id === 'streamings') {
+              return (
+                <SidebarMenuItem key={category.id}>
+                  <Link href={category.href} passHref legacyBehavior>
+                    <SidebarMenuButton
+                      asChild // Important for Link with custom component
+                      isActive={pathname === category.href}
+                      tooltip={category.name}
+                      className="h-auto p-2 flex flex-col items-center justify-center text-center group-data-[collapsible=icon]:p-1 group-data-[collapsible=icon]:w-full group-data-[collapsible=icon]:h-auto focus-visible:ring-inset"
+                    >
+                      <>
+                        <div className="w-full aspect-[16/9] rounded-md overflow-hidden group-data-[collapsible=icon]:w-7 group-data-[collapsible=icon]:h-7 group-data-[collapsible=icon]:aspect-square">
+                          <Image
+                            src="https://placehold.co/200x112.png"
+                            alt={category.name}
+                            layout="fill"
+                            objectFit="cover"
+                            data-ai-hint="streaming entertainment"
+                            className="transition-transform duration-300 group-hover:scale-105"
+                          />
+                        </div>
+                        <span className="mt-1 text-xs font-medium group-data-[collapsible=icon]:hidden">{category.name}</span>
+                      </>
+                    </SidebarMenuButton>
+                  </Link>
+                </SidebarMenuItem>
+              );
+            }
+            // Fallback for other categories, if any (currently none)
+            return (
+              <SidebarMenuItem key={category.id}>
+                <Link href={category.href} passHref legacyBehavior>
                   <SidebarMenuButton
                     asChild
                     isActive={pathname === category.href}
                     tooltip={category.name}
-                    className="h-auto py-4 flex flex-col items-center justify-center text-center group-data-[collapsible=icon]:!size-auto group-data-[collapsible=icon]:p-2" // Custom classes for Streamings card
                   >
                     <>
-                      <category.icon className="h-10 w-10 mb-1 group-data-[collapsible=icon]:h-6 group-data-[collapsible=icon]:w-6 group-data-[collapsible=icon]:mb-0" /> {/* Larger icon */}
-                      <span className="text-sm font-medium group-data-[collapsible=icon]:hidden">{category.name}</span>
-                    </>
-                  </SidebarMenuButton>
-                ) : (
-                  <SidebarMenuButton
-                    asChild
-                    isActive={pathname === category.href}
-                    tooltip={category.name}
-                  >
-                    <>
-                      <category.icon /> {/* Default icon size */}
+                      <category.icon />
                       <span>{category.name}</span>
                     </>
                   </SidebarMenuButton>
-                )}
-              </Link>
-            </SidebarMenuItem>
-          ))}
+                </Link>
+              </SidebarMenuItem>
+            );
+          })}
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter className="p-2">
