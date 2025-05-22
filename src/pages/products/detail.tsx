@@ -5,7 +5,7 @@ import Head from 'next/head';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Loader2, AlertTriangle, ArrowLeft, ExternalLink } from 'lucide-react';
-import type { Product, ApiModelDetailResponse, ApiPpvDetailResponse } from '@/types';
+import type { Product, ApiModelDetailResponse, ApiPpvDetailResponse, ApiPpvItem } from '@/types';
 import Link from 'next/link';
 
 // Helper function to transform API model detail (from /api/model/[id]) to Product type
@@ -26,7 +26,7 @@ function transformApiModelToProduct(apiModel: ApiModelDetailResponse): Product {
 }
 
 // Helper function to transform API PPV detail (from /api/ppv/[id]) to Product type
-function transformApiPpvDetailToProduct(apiPpvItem: ApiPpvDetailResponse): Product {
+function transformApiPpvDetailToProduct(apiPpvItem: ApiPpvItem): Product {
   const description = apiPpvItem.tags || 'No description available.';
   const category = apiPpvItem.tags ? apiPpvItem.tags.split('-')[0].trim().toLowerCase() || 'streaming' : 'streaming';
 
@@ -64,10 +64,16 @@ export default function ProductDetailPage() {
       setError(null);
       
       const isDevelopment = process.env.NODE_ENV === 'development';
-      const apiBaseUrl = isDevelopment ? '/api-proxy' : 'https://test.onlysfree.com/api';
+      let apiBaseUrl = '';
       
       let apiUrl = '';
       let isStreamingTypeFromQuery = productTypeParam === 'streaming';
+
+      if (isDevelopment) {
+        apiBaseUrl = '/api-proxy';
+      } else {
+        apiBaseUrl = 'https://test.onlysfree.com/api';
+      }
 
       if (isStreamingTypeFromQuery) {
         apiUrl = `${apiBaseUrl}/ppv/${currentId}`;
@@ -99,6 +105,8 @@ export default function ProductDetailPage() {
             errorMessage = `Network error or CORS issue. Ensure the API server (https://test.onlysfree.com) is accessible and CORS is configured for your deployment domain. Details: ${e.message}`;
         } else if (e.message && e.message.includes('Failed to fetch') && isDevelopment){
             errorMessage = `Network error. Ensure the API server (https://test.onlysfree.com) is accessible and the development proxy is working correctly. Proxy is targeting /api-proxy. Details: ${e.message}`;
+        } else if (e.message && e.message.includes('HTTP error! status: 404')) {
+          errorMessage = `Could not find the product (404). The API endpoint might be incorrect or the item ID (${currentId}) does not exist for the specified type (${productTypeParam || 'standard'}).`;
         }
         setError(errorMessage);
       } finally {
@@ -111,6 +119,13 @@ export default function ProductDetailPage() {
     }
   }, [id, productTypeParam, router.isReady]);
 
+  const handleBackNavigation = () => {
+    if (productTypeParam === 'streaming') {
+      router.push('/streamings');
+    } else {
+      router.push('/');
+    }
+  };
 
   if (loading) {
     return (
@@ -127,7 +142,7 @@ export default function ProductDetailPage() {
         <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" />
         <h1 className="text-2xl font-bold text-destructive mb-2">Error Loading Product</h1>
         <p className="text-muted-foreground mb-4 whitespace-pre-wrap px-4">{error}</p>
-        <Button variant="outline" onClick={() => router.back()}>
+        <Button variant="outline" onClick={handleBackNavigation}>
           <ArrowLeft className="mr-2 h-4 w-4" /> Go Back
         </Button>
       </div>
@@ -138,12 +153,10 @@ export default function ProductDetailPage() {
     return (
       <div className="container mx-auto py-8 text-center">
         <h1 className="text-2xl font-bold text-foreground mb-4">Product Not Found</h1>
-        <p className="text-muted-foreground mb-6">The product you are looking for (ID: {id || 'N/A'}) does not exist or could not be loaded.</p>
-        <Button variant="outline" asChild>
-          <Link href="/">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Home
-          </Link>
+        <p className="text-muted-foreground mb-6">The product you are looking for (ID: {id || 'N/A'}, Type: {productTypeParam || 'standard'}) does not exist or could not be loaded.</p>
+        <Button variant="outline" onClick={handleBackNavigation}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Home
         </Button>
       </div>
     );
@@ -156,7 +169,7 @@ export default function ProductDetailPage() {
         <meta name="description" content={product.description} />
       </Head>
       <div className="container mx-auto p-4 md:p-8">
-        <Button variant="outline" onClick={() => router.back()} className="mb-6">
+        <Button variant="outline" onClick={handleBackNavigation} className="mb-6">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back
         </Button>
