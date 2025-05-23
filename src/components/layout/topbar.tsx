@@ -42,10 +42,6 @@ export function SearchableTopbar() {
             />
           </div>
         </form>
-        <Button variant="ghost" size="icon" className="rounded-full">
-          <UserCircle className="h-5 w-5" />
-          <span className="sr-only">User Profile</span>
-        </Button>
       </div>
     </header>
   );

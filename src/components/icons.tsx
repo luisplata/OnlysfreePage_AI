@@ -19,7 +19,7 @@ export function VentaRapidaLogo(props: SVGProps<SVGSVGElement>) {
         fontWeight="bold"
         fill="hsl(var(--primary-foreground))"
       >
-        Venta
+        Onlys
       </text>
       <text
         x="95"
@@ -29,7 +29,7 @@ export function VentaRapidaLogo(props: SVGProps<SVGSVGElement>) {
         fontWeight="normal"
         fill="hsl(var(--accent))"
       >
-        Rapida
+        Free
       </text>
     </svg>
   );
