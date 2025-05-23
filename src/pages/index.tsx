@@ -4,6 +4,7 @@ import { ProductCard } from '@/components/product-card';
 import type { Product, ApiPack, ApiPackListResponse } from '@/types';
 import Head from 'next/head';
 import { Loader2 } from 'lucide-react';
+import { BASE_API_URL } from '@/lib/api';
 
 // Helper function to transform API pack data to Product type
 function transformApiPackToProduct(apiPack: ApiPack): Product {
@@ -28,7 +29,7 @@ function transformApiPackToProduct(apiPack: ApiPack): Product {
 // Helper function for fetching page data
 async function fetchPageData(page: number): Promise<ApiPackListResponse> {
   const isDevelopment = process.env.NODE_ENV === 'development';
-  const baseUrl = isDevelopment ? '/api-proxy' : 'https://test.onlysfree.com/api';
+  const baseUrl = isDevelopment ? '/api-proxy' : BASE_API_URL;
   const apiUrl = `${baseUrl}/packs?page=${page}`;
 
   const response = await fetch(apiUrl);

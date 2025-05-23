@@ -24,6 +24,7 @@ import { saleCategories } from '@/data/mock-data';
 import { Loader2, Tag as TagIcon } from 'lucide-react';
 import type { Product, ApiHotItem, ApiHotListResponse, ApiTagsResponse, Tag } from '@/types';
 import { Badge } from '@/components/ui/badge';
+import { BASE_API_URL, BASE_WEB_URL } from '@/lib/api';
 
 
 // Helper function to transform API Hot/Popular item data to Product type
@@ -71,8 +72,9 @@ export function SaleCategorySidebar() {
 
   const streamingsCategory = saleCategories.find(cat => cat.id === 'streamings');
 
-  const publicityImageUrl = "https://test.onlysfree.com/api/publicity/image/game";
-  const publicityLinkUrl = "https://test.onlysfree.com/publicity/game";
+  const publicityImageUrl = `${BASE_API_URL}/publicity/image/game`;
+   //"/publicity/image/game";
+  const publicityLinkUrl = `${BASE_WEB_URL}/publicity/game`;
 
   const [hotOffers, setHotOffers] = React.useState<Product[]>([]);
   const [loadingHotOffers, setLoadingHotOffers] = React.useState(true);
@@ -92,7 +94,7 @@ export function SaleCategorySidebar() {
       setLoadingHotOffers(true);
       setErrorHotOffers(null);
       const isDevelopment = process.env.NODE_ENV === 'development';
-      const baseUrl = isDevelopment ? '/api-proxy' : 'https://test.onlysfree.com/api';
+      const baseUrl = isDevelopment ? '/api-proxy' : BASE_API_URL;
       const apiUrl = `${baseUrl}/hot`;
 
       try {
@@ -126,7 +128,7 @@ export function SaleCategorySidebar() {
       setLoadingPopularOffers(true);
       setErrorPopularOffers(null);
       const isDevelopment = process.env.NODE_ENV === 'development';
-      const baseUrl = isDevelopment ? '/api-proxy' : 'https://test.onlysfree.com/api';
+      const baseUrl = isDevelopment ? '/api-proxy' : BASE_API_URL;
       const apiUrl = `${baseUrl}/popular`;
 
       try {
@@ -160,7 +162,7 @@ export function SaleCategorySidebar() {
       setLoadingTags(true);
       setErrorTags(null);
       const isDevelopment = process.env.NODE_ENV === 'development';
-      const baseUrl = isDevelopment ? '/api-proxy' : 'https://test.onlysfree.com/api';
+      const baseUrl = isDevelopment ? '/api-proxy' : BASE_API_URL;
       const apiUrl = `${baseUrl}/tags`;
 
       try {

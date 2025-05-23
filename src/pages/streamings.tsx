@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { ProductCard } from '@/components/product-card';
 import type { Product, ApiPpvItem, ApiPpvListResponse } from '@/types';
+import { BASE_API_URL } from '@/lib/api';
 
 // Helper function to transform API PPV item data to Product type
 function transformApiPpvItemToProduct(apiPpvItem: ApiPpvItem): Product {
@@ -29,7 +30,7 @@ function transformApiPpvItemToProduct(apiPpvItem: ApiPpvItem): Product {
 // Helper function for fetching page data
 async function fetchPageData(page: number): Promise<ApiPpvListResponse> {
   const isDevelopment = process.env.NODE_ENV === 'development';
-  const baseUrl = isDevelopment ? '/api-proxy' : 'https://test.onlysfree.com/api';
+  const baseUrl = isDevelopment ? '/api-proxy' : BASE_API_URL;
   const apiUrl = `${baseUrl}/ppv?page=${page}`;
 
   const response = await fetch(apiUrl, { headers: { 'Accept': 'application/json' } });

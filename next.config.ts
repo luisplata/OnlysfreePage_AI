@@ -1,4 +1,5 @@
 
+import { BASE_API_URL } from '@/lib/api';
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
@@ -60,7 +61,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/api-proxy/:path*',
-        destination: 'https://test.onlysfree.com/api/:path*',
+        destination: `${BASE_API_URL}/:path*`,
       },
     ];
   },

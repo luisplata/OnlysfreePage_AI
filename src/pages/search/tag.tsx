@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { ProductCard } from '@/components/product-card';
 import type { Product, ApiCategorizedSearchResultsResponse, ApiPack, ApiPpvItem } from '@/types';
 import { Loader2, ArrowLeft } from 'lucide-react';
+import { BASE_API_URL } from '@/lib/api';
 
 // Helper function to transform API pack data (from search results 'productos') to Product type
 function transformApiPackToProduct(apiPack: ApiPack): Product {
@@ -76,7 +77,7 @@ export default function TagSearchPage() {
       setTag(decodedTag);
       
       const isDevelopment = process.env.NODE_ENV === 'development';
-      const apiUrlDomain = isDevelopment ? '/api-proxy' : 'https://test.onlysfree.com/api';
+      const apiUrlDomain = isDevelopment ? '/api-proxy' : BASE_API_URL;
       const constructedBaseApiUrl = `${apiUrlDomain}/tag/search?tag=${encodeURIComponent(decodedTag)}`;
       setBaseApiUrl(constructedBaseApiUrl);
 

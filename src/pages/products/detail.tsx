@@ -8,6 +8,7 @@ import { Loader2, AlertTriangle, ArrowLeft, ExternalLink } from 'lucide-react';
 import type { Product, ApiModelDetailResponse, ApiPpvDetailResponse, ApiPpvItem, ApiPack } from '@/types';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
+import { BASE_API_URL } from '@/lib/api';
 
 // Helper function to transform API model detail (from /api/model/[id]) to Product type
 function transformApiModelToProduct(apiModel: ApiModelDetailResponse): Product {
@@ -69,7 +70,7 @@ export default function ProductDetailPage() {
       setError(null);
       
       const isDevelopment = process.env.NODE_ENV === 'development';
-      let apiBaseUrlPart = isDevelopment ? '/api-proxy' : 'https://test.onlysfree.com/api';
+      let apiBaseUrlPart = isDevelopment ? '/api-proxy' : BASE_API_URL;
       
       let apiUrl = '';
       let isStreamingTypeFromQuery = productTypeParam === 'streaming';
