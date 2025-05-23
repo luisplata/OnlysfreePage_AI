@@ -8,7 +8,7 @@ export default function FlashSalesPage() {
   return (
     <>
       <Head>
-        <title>Flash Sales - Venta Rapida</title>
+        <title>Flash Sales - OnlysFree</title>
       </Head>
       <div className="container mx-auto py-8">
         <Button variant="outline" asChild className="mb-6">

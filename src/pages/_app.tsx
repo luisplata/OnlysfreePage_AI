@@ -21,8 +21,8 @@ export default function MyApp({ Component, pageProps }: AppProps) {
   return (
     <>
       <Head>
-        <title>Venta Rapida</title>
-        <meta name="description" content="Quick sales and great deals!" />
+        <title>OnlysFree</title>
+        <meta name="description" content="Consigue todos los Packs de tus modelos favoritas gratis!" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         {/* Consider adding a link rel="icon" href="/favicon.ico" if you have one */}
       </Head>

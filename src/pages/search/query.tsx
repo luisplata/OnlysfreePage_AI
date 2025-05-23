@@ -240,7 +240,7 @@ export default function GeneralSearchPage() {
   return (
     <>
       <Head>
-        <title>{searchTerm ? `Search: ${searchTerm}` : 'Search Results'} - Venta Rapida</title>
+        <title>{searchTerm ? `Search: ${searchTerm}` : 'Search Results'} - OnlysFree</title>
       </Head>
       <div className="container mx-auto p-4">
         <Button variant="outline" asChild className="mb-6">

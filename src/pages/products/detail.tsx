@@ -174,7 +174,7 @@ export default function ProductDetailPage() {
   return (
     <>
       <Head>
-        <title>{product.title} - Venta Rapida</title>
+        <title>{product.title} - OnlysFree</title>
         <meta name="description" content={product.description} />
       </Head>
       <div className="container mx-auto p-4 md:p-8">

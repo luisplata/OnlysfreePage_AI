@@ -8,7 +8,7 @@ export default function SeasonalOffersPage() {
   return (
     <>
       <Head>
-        <title>Seasonal Offers - Venta Rapida</title>
+        <title>Seasonal Offers - OnlysFree</title>
       </Head>
       <div className="container mx-auto py-8">
         <Button variant="outline" asChild className="mb-6">

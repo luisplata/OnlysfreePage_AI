@@ -1,4 +1,4 @@
-# **App Name**: Venta Rapida
+# **App Name**: OnlysFree
 
 ## Core Features:
 

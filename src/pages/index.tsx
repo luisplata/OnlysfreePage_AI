@@ -145,7 +145,7 @@ export default function HomePage() {
     return (
       <div className="container mx-auto py-8 text-center flex flex-col items-center justify-center min-h-[calc(100vh-200px)]">
         <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-        <p className="text-xl text-muted-foreground">Loading products...</p>
+        <p className="text-xl text-muted-foreground">Loading models...</p>
       </div>
     );
   }
@@ -153,11 +153,11 @@ export default function HomePage() {
   if (error && products.length === 0) {
     return (
       <div className="container mx-auto py-8 text-center">
-        <h1 className="text-3xl font-bold text-destructive mb-4">Error Loading Products</h1>
+        <h1 className="text-3xl font-bold text-destructive mb-4">Error Loading Models</h1>
         <p className="text-xl text-muted-foreground whitespace-pre-wrap px-4">{error}</p>
         <p className="text-sm text-muted-foreground mt-2">
           Please check your internet connection and ensure the API server is accessible.
-          If running a static export, ensure the API server (https://test.onlysfree.com) has CORS configured correctly.
+          If running a static export, ensure the API server ({`${BASE_API_URL}`}) has CORS configured correctly.
         </p>
       </div>
     );
@@ -167,9 +167,9 @@ export default function HomePage() {
     return (
       <div className="container mx-auto py-8 text-center">
         <Head>
-          <title>Venta Rapida - No Products</title>
+          <title>OnlysFree - No Models</title>
         </Head>
-        <h1 className="text-3xl font-bold text-foreground mb-4">No Products Found</h1>
+        <h1 className="text-3xl font-bold text-foreground mb-4">No Models Found</h1>
         <p className="text-xl text-muted-foreground">Please check back later or try refreshing the page.</p>
       </div>
     );
@@ -178,10 +178,10 @@ export default function HomePage() {
   return (
     <>
       <Head>
-        <title>Venta Rapida - Featured Products</title>
+        <title>OnlysFree - Featured Models</title>
       </Head>
       <div className="container mx-auto p-4">
-        <h1 className="text-3xl font-bold mb-8 text-foreground text-center sm:text-left">Featured Products</h1>
+        <h1 className="text-3xl font-bold mb-8 text-foreground text-center sm:text-left">Featured Models</h1>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {products.map((product) => (
             <ProductCard key={`${product.id}-${product.title}`} product={product} />

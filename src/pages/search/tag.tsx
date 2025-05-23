@@ -241,7 +241,7 @@ export default function TagSearchPage() {
   return (
     <>
       <Head>
-        <title>{tag ? `Tag: ${tag}` : 'Tag Search'} - Venta Rapida</title>
+        <title>{tag ? `Tag: ${tag}` : 'Tag Search'} - OnlysFree</title>
       </Head>
       <div className="container mx-auto p-4">
         <Button variant="outline" asChild className="mb-6">

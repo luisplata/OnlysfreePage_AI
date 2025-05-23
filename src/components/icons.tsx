@@ -7,7 +7,7 @@ export function VentaRapidaLogo(props: SVGProps<SVGSVGElement>) {
       viewBox="0 0 200 50"
       width="120"
       height="30"
-      aria-label="Venta Rapida Logo"
+      aria-label="OnlysFree Logo"
       {...props}
     >
       <rect width="200" height="50" fill="transparent" />

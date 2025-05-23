@@ -26,7 +26,7 @@ export function SearchableTopbar() {
       </div>
       <Link href="/" className="flex items-center gap-2 text-lg font-semibold md:text-base">
         <VentaRapidaLogo className="h-8 w-auto" />
-        <span className="sr-only">Venta Rapida</span>
+        <span className="sr-only">OnlysFree</span>
       </Link>
       <div className="flex flex-1 items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
         <form onSubmit={handleSearch} className="ml-auto flex-1 sm:flex-initial">

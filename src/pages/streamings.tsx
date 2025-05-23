@@ -159,7 +159,7 @@ export default function StreamingsPage() {
     return (
       <div className="container mx-auto py-8 text-center">
         <Head>
-          <title>Venta Rapida - No Streams Found</title>
+          <title>OnlysFree - No Streams Found</title>
         </Head>
         <h1 className="text-3xl font-bold text-foreground mb-4">No Streams Found</h1>
         <p className="text-xl text-muted-foreground">Please check back later or try refreshing the page.</p>
@@ -176,8 +176,8 @@ export default function StreamingsPage() {
   return (
     <>
       <Head>
-        <title>Streamings - Venta Rapida</title>
-        <meta name="description" content="Featured streaming content available on Venta Rapida." />
+        <title>Streamings - OnlysFree</title>
+        <meta name="description" content="Featured streaming content available on OnlysFree." />
       </Head>
       <div className="container mx-auto p-4">
         <Button variant="outline" asChild className="mb-6">

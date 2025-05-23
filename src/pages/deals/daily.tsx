@@ -8,7 +8,7 @@ export default function DailyDealsPage() {
   return (
     <>
       <Head>
-        <title>Daily Deals - Venta Rapida</title>
+        <title>Daily Deals - OnlysFree</title>
       </Head>
       <div className="container mx-auto py-8">
         <Button variant="outline" asChild className="mb-6">
