@@ -1,7 +1,17 @@
 {
-  "name": "nextn",
-  "version": "0.1.0",
+  "name": "onlysfree_frontend_ai",
+  "version": "1.0.0",
   "private": true,
+  "description": "Frontend for Onlysfree by AI",
+  "author": "Luis Plata by AI",
+  "license": "MIT",
+  "homepage": "https://onlysfree.com",
+  "keywords": [
+    "onlysfree",
+    "ai",
+    "frontend",
+    "nextjs"
+  ],
   "scripts": {
     "dev": "next dev --turbopack -p 9002",
     "genkit:dev": "genkit start -- tsx src/ai/dev.ts",
