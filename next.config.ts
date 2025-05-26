@@ -39,7 +39,7 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'fs-01.cyberdrop.to', // From /api/ppv
+        hostname: 'fs-01.cyberdrop.to', // From /api/ppv & /api/popular
         port: '',
         pathname: '/**',
       },
@@ -64,6 +64,10 @@ const nextConfig: NextConfig = {
         destination: `${BASE_API_URL}/:path*`,
       },
     ];
+  },
+  generateBuildId: async () => {
+    // Genera un ID de compilación basado en la fecha y hora actual
+    return new Date().toISOString();
   },
 };
 
