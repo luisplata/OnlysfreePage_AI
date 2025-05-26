@@ -1,0 +1,41 @@
+
+<IfModule mod_rewrite.c>
+    Options -MultiViews -Indexes
+    RewriteEngine On
+
+    # Handle Authorization Header if needed
+    # RewriteCond %{HTTP:Authorization} .
+    # RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+    
+    # Redirect Trailing Slashes If Not A Folder...
+    # RewriteCond %{REQUEST_FILENAME} !-d
+    # RewriteCond %{REQUEST_URI} (.+)/$
+    # RewriteRule ^ %1 [L,R=301]
+
+    # Serve existing files and directories directly
+    RewriteCond %{REQUEST_FILENAME} -s [OR]
+    RewriteCond %{REQUEST_FILENAME} -l [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^.*$ - [NC,L]
+
+    # If the request is for a path and path.html exists, serve it.
+    # This handles Next.js static export pages like /products/detail -> /products/detail.html
+    RewriteCond %{DOCUMENT_ROOT}%{REQUEST_URI}.html -s
+    RewriteRule ^(.*)$ $1.html [NC,L]
+
+    # Fallback to 404.html if it exists (Next.js generated)
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{DOCUMENT_ROOT}/404.html -f
+    RewriteRule . /404.html [L]
+
+    # Alternatively, if you prefer SPA-like behavior and have no specific 404.html,
+    # you could fallback to index.html for client-side routing to handle it.
+    # However, for Next.js static export with individual HTML files, the above 404.html rule is generally better.
+    # RewriteCond %{REQUEST_FILENAME} !-f
+    # RewriteRule . /index.html [L]
+</IfModule>
+
+# Comment out or remove this section if your site does not use PHP at all.
+# <IfModule mime_module>
+#   AddHandler application/x-httpd-ea-php70 .php .php7 .phtml
+# </IfModule>
