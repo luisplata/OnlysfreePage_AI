@@ -67,8 +67,10 @@ const nextConfig: NextConfig = {
   },
   generateBuildId: async () => {
     // Genera un ID de compilación basado en la fecha y hora actual
-    return new Date().toISOString();
-  },
+    const dateString = new Date().toISOString();
+    // Reemplaza los caracteres inválidos (:) con guiones (-)
+    return dateString.replace(/:/g, '-');
+  },  
 };
 
 export default nextConfig;
