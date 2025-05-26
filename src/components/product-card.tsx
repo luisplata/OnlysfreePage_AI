@@ -37,7 +37,7 @@ export function ProductCard({ product }: ProductCardProps) {
       <a className="block group">
         <Card className="h-full flex flex-col overflow-hidden transition-all duration-200 ease-in-out group-hover:shadow-xl group-hover:scale-[1.02] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg">
           <CardHeader className="p-0">
-            <div className="aspect-video relative w-full overflow-hidden bg-muted">
+            <div className="aspect-square relative w-full overflow-hidden bg-muted"> {/* Changed from aspect-video to aspect-square */}
               {product.imageUrl ? (
                 <Image
                   src={product.imageUrl}
@@ -47,7 +47,7 @@ export function ProductCard({ product }: ProductCardProps) {
                   className="object-cover transition-transform duration-300 group-hover:scale-105"
                   data-ai-hint={`${product.category} ${product.productType === 'streaming' ? 'video stream' : 'product item'}`}
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src = `https://placehold.co/600x400.png?text=${encodeURIComponent(product.title + '\\nImage Not Found')}`;
+                    (e.target as HTMLImageElement).src = `https://placehold.co/400x400.png?text=${encodeURIComponent(product.title + '\\nImage Not Found')}`; // Adjusted placeholder to be square
                     (e.target as HTMLImageElement).srcset = '';
                   }}
                 />
