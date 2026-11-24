@@ -93,6 +93,34 @@ export type ApiPpvDetailResponse = ApiPpvItem;
 // API response for /api/hot and /api/popular is a direct array of ApiHotItem
 export type ApiHotListResponse = ApiHotItem[]; // Also for /api/popular
 
+// --- Publicidad (GET /api/placements/{key}) ---
+
+export interface AdPlacement {
+  key: string;
+  name: string;
+  max_items: number;
+}
+
+export interface AdCreative {
+  campaign_key: string;
+  name: string;
+  image_url: string;
+  /** Si viene vacío, usar `headline` como alt. */
+  alt_text: string | null;
+  headline: string | null;
+  body: string | null;
+  cta_label: string | null;
+  /** Destino final, solo informativo. El `href` usa `click_url`. */
+  target_url: string;
+  /** URL que registra el click y redirige al destino. */
+  click_url: string;
+}
+
+export interface AdSlotResponse {
+  placement: AdPlacement;
+  creatives: AdCreative[];
+}
+
 // API response for /api/tags
 export interface ApiTagsResponse {
   [key: string]: string; // e.g., "0": "onlyfans", "218": "creeplifeenc"

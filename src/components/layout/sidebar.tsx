@@ -24,7 +24,10 @@ import { saleCategories } from '@/data/mock-data';
 import { Loader2, Tag as TagIcon } from 'lucide-react';
 import type { Product, ApiHotItem, ApiHotListResponse, ApiTagsResponse, Tag } from '@/types';
 import { Badge } from '@/components/ui/badge';
-import { BASE_API_URL, BASE_WEB_URL } from '@/lib/api';
+import { AdCreativeCard } from '@/components/ad-creative-card';
+import { useAdSlot } from '@/hooks/use-ad-slot';
+import { getPlacementKeyForPath } from '@/lib/ads';
+import { BASE_API_URL } from '@/lib/api';
 
 
 // Helper function to transform API Hot/Popular item data to Product type
@@ -72,9 +75,8 @@ export function SaleCategorySidebar() {
 
   const streamingsCategory = saleCategories.find(cat => cat.id === 'streamings');
 
-  const publicityImageUrl = `${BASE_API_URL}/publicity/image/game`;
-   //"/publicity/image/game";
-  const publicityLinkUrl = `${BASE_WEB_URL}/publicity/game`;
+  const placementKey = getPlacementKeyForPath(pathname);
+  const { slot: adSlot } = useAdSlot(placementKey);
 
   const [hotOffers, setHotOffers] = React.useState<Product[]>([]);
   const [loadingHotOffers, setLoadingHotOffers] = React.useState(true);
@@ -245,31 +247,20 @@ export function SaleCategorySidebar() {
           )}
 
           {/* Publicity Card */}
-          <SidebarMenuItem className="mt-2">
-            <SidebarMenuButton
-              asChild
-              tooltip="Publicity"
-              className="h-auto p-2 flex flex-col items-center justify-center text-center group-data-[collapsible=icon]:p-1 group-data-[collapsible=icon]:w-full group-data-[collapsible=icon]:h-auto focus-visible:ring-inset"
-            >
-              <a href={publicityLinkUrl} target="_blank" rel="noopener noreferrer">
-                <div className="w-full aspect-[16/9] rounded-md overflow-hidden group-data-[collapsible=icon]:w-7 group-data-[collapsible=icon]:h-7 group-data-[collapsible=icon]:aspect-square relative">
-                  <Image
-                    src={publicityImageUrl}
-                    alt="Publicity"
-                    fill={true}
-                    sizes="(max-width: 256px) 100vw, 200px"
-                    className="object-cover transition-transform duration-300 group-hover:scale-105"
-                    data-ai-hint="advertisement banner"
-                     onError={(e) => {
-                        (e.target as HTMLImageElement).src = 'https://placehold.co/200x112.png?text=Ad+Error';
-                        (e.target as HTMLImageElement).srcset = '';
-                      }}
-                  />
-                </div>
-                <span className="mt-1 text-xs font-medium group-data-[collapsible=icon]:hidden">Publicidad</span>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+          {adSlot?.creatives.map((creative) => (
+            <SidebarMenuItem key={creative.campaign_key} className="mt-2">
+              <SidebarMenuButton
+                asChild
+                tooltip={creative.headline || creative.name}
+                className="h-auto p-2 flex flex-col items-center justify-center text-center group-data-[collapsible=icon]:p-1 group-data-[collapsible=icon]:w-full group-data-[collapsible=icon]:h-auto focus-visible:ring-inset"
+              >
+                <AdCreativeCard
+                  creative={creative}
+                  placementKey={adSlot.placement.key}
+                />
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
 
           <SidebarSeparator className="my-3" />
 
