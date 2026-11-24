@@ -1,0 +1,30 @@
+# Preview local del export estático en http://localhost:8081.
+# Aislado del stack del backend: red propia, sin redes externas, sin
+# depends_on y sin servicios de backend. El stack del backend (80/443/3306)
+# no se toca ni se referencia desde acá.
+name: onlysfree-qa-preview
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Las resuelve el navegador, no el contenedor: son URLs del host, nunca
+        # el nombre de un servicio del backend.
+        # Default: backend local en el puerto 80. Se sobreescriben con QA_API_URL
+        # y QA_WEB_URL (shell o .env), sin editar archivos.
+        NEXT_PUBLIC_API_URL: ${QA_API_URL:-http://localhost/api}
+        NEXT_PUBLIC_WEB_URL: ${QA_WEB_URL:-http://localhost}
+    image: onlysfree-qa-preview:local
+    ports:
+      # Solo el 8081 del host para no chocar con el 80/443 del backend.
+      - "${QA_PREVIEW_PORT:-8081}:80"
+    restart: unless-stopped
+    healthcheck:
+      # nginx:alpine no trae curl; busybox wget sí está.
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s

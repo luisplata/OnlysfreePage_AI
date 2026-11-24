@@ -1,0 +1,27 @@
+# Dependencias y artefactos: se regeneran dentro del build
+node_modules
+.next
+out
+coverage
+
+# Git y CI
+.git
+.github
+
+# Variables de entorno: el build las recibe por ARG.
+# .env.local del host nunca entra a la imagen.
+.env*
+!.env.example
+
+# Documentación y tooling de editor
+docs
+.vscode
+.idx
+.atl
+
+# Basura del host
+*.log
+*.tsbuildinfo
+
+# El compose no es parte del build
+docker-compose*.yml

@@ -35,6 +35,10 @@ significa que el ZIP ya está publicado como artefacto.
 
 Si la clean URL da 404, falta `.htaccess` o el servidor no tiene `mod_rewrite`.
 
+## Probar en local
+
+Antes de subir nada, serví el export con nginx en Docker: ver [Preview local con Docker](local-preview.md).
+
 ## Caducidad
 
 > El artefacto expira a las **24 horas**. Si ya no aparece en **Artifacts**, relanzá el workflow.
