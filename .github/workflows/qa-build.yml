@@ -1,0 +1,101 @@
+# Build de QA: compila el export estatico y entrega un ZIP autocontenido de 1 dia.
+# El orden importa: typecheck y tests van ANTES del build porque next.config.ts
+# tiene ignoreBuildErrors: true y un build "verde" puede estar roto.
+name: QA build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+# Solo lectura: este workflow no escribe en el repo.
+permissions:
+  contents: read
+
+# Un push nuevo a la misma ref cancela el run viejo: solo importa el ultimo commit.
+concurrency:
+  group: qa-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qa-artifact:
+    name: Build QA artifact
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      # Gate de tipos: next build los ignoraria, asi que se cortan aca.
+      - name: Typecheck
+        run: npm run typecheck
+
+      # Gate de tests: rojo = sin artefacto.
+      - name: Tests
+        run: npm test
+
+      # NEXT_PUBLIC_* se inlinea al compilar: solo cuenta el valor presente aca.
+      # Si las vars QA_* no existen, cae en test.onlysfree.com.
+      - name: Build con URLs de QA
+        env:
+          NEXT_PUBLIC_API_URL: ${{ vars.QA_API_URL || 'https://test.onlysfree.com/api' }}
+          NEXT_PUBLIC_WEB_URL: ${{ vars.QA_WEB_URL || 'https://test.onlysfree.com' }}
+        run: npm run build
+
+      # Next solo copia public/ (que no existe): el .htaccess viaja a mano.
+      - name: Copiar .htaccess al export
+        run: cp app/.htaccess out/.htaccess
+
+      # Si falta cualquiera de estas piezas, no hay artefacto.
+      - name: Guardas del export
+        run: |
+          set -euo pipefail
+          test -f out/index.html
+          test -f out/404.html
+          test -f out/.htaccess
+          # Sin assets JS no hay app, aunque el HTML exista.
+          test -n "$(find out/_next/static -name '*.js' -print -quit)"
+          # El default de src/lib/api.ts es PRODUCCION: si aparece en el export,
+          # el build se hizo sin las URLs de QA. -I ignora binarios, -l dice donde.
+          if grep -RIl 'admin\.onlysfree\.com' out; then
+            echo "::error::El export contiene admin.onlysfree.com (URL de produccion)"
+            exit 1
+          fi
+
+      # Zip propio: nombre exacto y contenido demostrable. El punto recursa
+      # dotfiles (con * el .htaccess queda afuera y Apache devuelve 404).
+      - name: Empaquetar y verificar ZIP
+        run: |
+          set -euo pipefail
+          NAME="onlysfree-qa-${GITHUB_SHA::7}-run${GITHUB_RUN_NUMBER}"
+          echo "ARTIFACT_ZIP=${NAME}.zip" >> "$GITHUB_ENV"
+          # zip -r sobre un archivo existente actualiza entradas pero no borra
+          # las que ya no estan en out/: se arranca limpio.
+          rm -f "${NAME}.zip"
+          ( cd out && zip -r "../${NAME}.zip" . )
+          # El listado va a un archivo: unzip | grep -q con pipefail puede morir
+          # por SIGPIPE cuando .htaccess aparece temprano y el ZIP es grande.
+          unzip -l "${NAME}.zip" > "${RUNNER_TEMP:-/tmp}/zip-listing.txt"
+          grep -qE '(^|[[:space:]])(\./)?\.htaccess$' "${RUNNER_TEMP:-/tmp}/zip-listing.txt"
+
+      # archive: false sube el ZIP tal cual y exige UN solo archivo: con el, el
+      # input name se ignora y el artefacto toma el nombre del archivo, que ya
+      # es el correcto. Ese input existe desde upload-artifact v7.0.0; v7 es la
+      # version minima que lo soporta (v4 lo ignoraba y re-zipeaba).
+      - name: Subir artefacto
+        uses: actions/upload-artifact@v7
+        with:
+          path: ${{ env.ARTIFACT_ZIP }}
+          archive: false
+          retention-days: 1
+          if-no-files-found: error
+          include-hidden-files: true
