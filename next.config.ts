@@ -1,6 +1,12 @@
 
-import { BASE_API_URL } from '@/lib/api';
+import { loadEnvConfig } from '@next/env';
+import { getApiBaseUrl } from '@/lib/api';
 import type {NextConfig} from 'next';
+
+// Next.js evaluates this file BEFORE it loads the `.env*` files, so we load
+// them here to let `rewrites()` see NEXT_PUBLIC_API_URL/`NEXT_PUBLIC_WEB_URL`
+// in `next dev`. Values already present in process.env always win.
+loadEnvConfig(process.cwd(), process.env.NODE_ENV !== 'production');
 
 const nextConfig: NextConfig = {
   output: 'export',
@@ -61,7 +67,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/api-proxy/:path*',
-        destination: `${BASE_API_URL}/:path*`,
+        destination: `${getApiBaseUrl()}/:path*`,
       },
     ];
   },
