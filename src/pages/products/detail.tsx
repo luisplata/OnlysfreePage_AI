@@ -103,9 +103,9 @@ export default function ProductDetailPage() {
         let errorMessage = e.message || 'Failed to load product details.';
         if (e.message && e.message.includes('Failed to fetch')) {
             if (isDevelopment){
-                errorMessage = `Network error. Ensure the API server (https://test.onlysfree.com) is accessible and the development proxy is working correctly. Proxy is targeting /api-proxy. Details: ${e.message}`;
+                errorMessage = `Network error. Ensure the API server (${BASE_API_URL}) is accessible and the development proxy is working correctly. Proxy is targeting /api-proxy. Details: ${e.message}`;
             } else {
-                errorMessage = `Network error or CORS issue. Ensure the API server (https://test.onlysfree.com) is accessible and CORS is configured for your deployment domain. Details: ${e.message}`;
+                errorMessage = `Network error or CORS issue. Ensure the API server (${BASE_API_URL}) is accessible and CORS is configured for your deployment domain. Details: ${e.message}`;
             }
         } else if (e.message && e.message.includes('HTTP error! status: 404')) {
           errorMessage = `Could not find the product (404). The API endpoint might be incorrect or the item ID (${currentId}) does not exist for the specified type (${productTypeParam || 'standard'}).`;

@@ -77,9 +77,9 @@ export default function StreamingsPage() {
         if (e.message && e.message.toLowerCase().includes('failed to fetch')) {
           const isDevelopmentEnv = process.env.NODE_ENV === 'development';
           if (isDevelopmentEnv) {
-            errorMessage = `Network error. Ensure the API server (https://test.onlysfree.com) is accessible and the development proxy targeting /api-proxy is working correctly. Details: ${e.message}`;
+            errorMessage = `Network error. Ensure the API server (${BASE_API_URL}) is accessible and the development proxy targeting /api-proxy is working correctly. Details: ${e.message}`;
           } else {
-            errorMessage = `Network error or CORS issue. Ensure the API server (https://test.onlysfree.com) is accessible and CORS is configured for your deployment domain. Details: ${e.message}`;
+            errorMessage = `Network error or CORS issue. Ensure the API server (${BASE_API_URL}) is accessible and CORS is configured for your deployment domain. Details: ${e.message}`;
           }
         } else if (e.message && e.message.includes('HTTP error! status: 404')) {
           errorMessage = 'Could not find streaming products (404). The API endpoint might be incorrect or temporarily unavailable.';

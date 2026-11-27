@@ -87,9 +87,9 @@ export default function HomePage() {
         if (e.message && e.message.includes('Failed to fetch')) {
           const isDevelopmentEnv = process.env.NODE_ENV === 'development';
           if (isDevelopmentEnv) {
-             errorMessage = `Network error. Ensure the API server (https://test.onlysfree.com) is accessible and the development proxy is working correctly. Proxy is targeting /api-proxy. Details: ${e.message}`;
+             errorMessage = `Network error. Ensure the API server (${BASE_API_URL}) is accessible and the development proxy is working correctly. Proxy is targeting /api-proxy. Details: ${e.message}`;
           } else {
-            errorMessage = `Network error or CORS issue. Ensure the API server (https://test.onlysfree.com) is accessible and CORS is configured for your deployment domain. Details: ${e.message}`;
+            errorMessage = `Network error or CORS issue. Ensure the API server (${BASE_API_URL}) is accessible and CORS is configured for your deployment domain. Details: ${e.message}`;
           }
         }
         setError(errorMessage);
