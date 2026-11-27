@@ -176,7 +176,15 @@ jobs:
           EXPECTED=$(grep -o '"buildId":"[^"]*"' out/index.html | head -1 | cut -d'"' -f4)
           echo "buildId build: $EXPECTED"
 
-          BUSTED=$(curl -sS -m 20 "https://ai.onlysfree.com/?cb=${GITHUB_RUN_ID}" | grep -o '"buildId":"[^"]*"' | head -1 | cut -d'"' -f4 || true)
+          # Reintentos: justo despues del rsync puede caer una request en el
+          # hueco en que index.html todavia no esta escrito.
+          BUSTED=""
+          for i in $(seq 1 6); do
+            BUSTED=$(curl -sS -m 20 "https://ai.onlysfree.com/?cb=${GITHUB_RUN_ID}-$i" | grep -o '"buildId":"[^"]*"' | head -1 | cut -d'"' -f4 || true)
+            if [ "$BUSTED" = "$EXPECTED" ]; then break; fi
+            echo "intento $i: servido=${BUSTED:-vacio}"
+            sleep 10
+          done
           echo "buildId servido (sin cache): ${BUSTED:-vacio}"
           if [ "$BUSTED" != "$EXPECTED" ]; then
             echo "::error::El docroot no sirve este build: build=$EXPECTED servido=${BUSTED:-vacio}"
