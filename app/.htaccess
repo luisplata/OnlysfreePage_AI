@@ -31,6 +31,20 @@
 # 404 real: sirve 404.html CON status 404. Es lo que evita el soft 404.
 ErrorDocument 404 /404.html
 
+# El HTML no se cachea: los assets de /_next/static llevan hash en el nombre y
+# pueden cachearse para siempre, pero index.html y las paginas no. Si el proxy
+# guarda el HTML, un deploy queda invisible hasta que expire la entrada vieja.
+<IfModule mod_headers.c>
+    <FilesMatch "\.html$">
+        Header set Cache-Control "no-store, must-revalidate"
+    </FilesMatch>
+</IfModule>
+
+# Equivalente para el cache de LiteSpeed, si ese vhost lo tiene activo.
+<IfModule LiteSpeed>
+    CacheDisable public /
+</IfModule>
+
 # Comment out or remove this section if your site does not use PHP at all.
 # <IfModule mime_module>
 #   AddHandler application/x-httpd-ea-php70 .php .php7 .phtml
