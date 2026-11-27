@@ -164,17 +164,23 @@ jobs:
           check "https://ai.onlysfree.com/search/query"
 
       # El rsync puede dejar el build nuevo en disco y el server seguir sirviendo
-      # una copia vieja de cache: sin esta comparacion, un deploy "verde" puede
-      # no estar visible para nadie. Se pide la URL limpia a proposito; con un
-      # query aleatorio el cache no se ejerce y la guarda pasaria siempre.
+      # la copia anterior por unos minutos: sin esta comparacion, un deploy
+      # "verde" puede no estar visible para nadie. Se pide la URL limpia a
+      # proposito; con un query aleatorio nunca se ejerce el cache y la guarda
+      # pasaria siempre. Se reintenta hasta 5 minutos antes de fallar.
       - name: Verificar version en vivo (buildId)
         run: |
           set -euo pipefail
           EXPECTED=$(grep -o '"buildId":"[^"]*"' out/index.html | head -1 | cut -d'"' -f4)
-          LIVE=$(curl -sS -m 20 https://ai.onlysfree.com/ | grep -o '"buildId":"[^"]*"' | head -1 | cut -d'"' -f4)
           echo "buildId build: $EXPECTED"
-          echo "buildId live:  $LIVE"
-          if [ "$EXPECTED" != "$LIVE" ]; then
-            echo "::error::El sitio sirve otro build (cache sin purgar): build=$EXPECTED live=$LIVE"
-            exit 1
-          fi
+          for i in $(seq 1 30); do
+            LIVE=$(curl -sS -m 20 https://ai.onlysfree.com/ | grep -o '"buildId":"[^"]*"' | head -1 | cut -d'"' -f4 || true)
+            echo "intento $i: live=${LIVE:-vacio}"
+            if [ "$LIVE" = "$EXPECTED" ]; then
+              echo "OK: el sitio ya sirve $EXPECTED"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::Tras 5 minutos el sitio sigue sirviendo otro build (build=$EXPECTED live=$LIVE)"
+          exit 1
