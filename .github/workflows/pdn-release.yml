@@ -1,0 +1,206 @@
+# Release a PDN (onlysfree.com) desde CI.
+#
+# Diferencias con QA (qa-build.yml):
+#   - Solo manual (o tag v*), nunca push a main, y pasa por el environment
+#     "production" (ahi se pueden exigir reviewers).
+#   - Compila con las URLs de produccion y falla si el export queda apuntando a QA.
+#   - No cancela un deploy en curso: concurrency sin cancel-in-progress.
+#   - El primer deploy va SIN --delete: si se borran los assets viejos mientras
+#     hay HTML cacheado que los referencia, ese visitante ve CSS/JS 404.
+#     La limpieza se corre despues, a mano, con cleanup=true.
+name: PDN release
+
+on:
+  workflow_dispatch:
+    inputs:
+      cleanup:
+        description: "Borrar del docroot lo que no este en el export (solo tras confirmar que el build nuevo ya se sirve)"
+        type: boolean
+        default: false
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pdn-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build y deploy a onlysfree.com
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      # next.config.ts tiene ignoreBuildErrors: true, asi que el typecheck va aca.
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Tests
+        run: npm test
+
+      # NEXT_PUBLIC_* se inlinea al compilar. Sin estos valores el bundle cae en
+      # los defaults de src/lib/api.ts, que ya son produccion, pero se fijan
+      # explicitos para que el deploy no dependa de un default.
+      - name: Build de produccion
+        env:
+          NEXT_PUBLIC_API_URL: ${{ vars.PDN_API_URL || 'https://admin.onlysfree.com/api' }}
+          NEXT_PUBLIC_WEB_URL: ${{ vars.PDN_WEB_URL || 'https://onlysfree.com' }}
+        run: npm run build
+
+      # Next solo copia public/ (que no existe): el .htaccess viaja a mano.
+      - name: Copiar .htaccess al export
+        run: cp app/.htaccess out/.htaccess
+
+      - name: Guardas del export
+        run: |
+          set -euo pipefail
+          test -f out/index.html
+          test -f out/404.html
+          test -f out/.htaccess
+          test -n "$(find out/_next/static -name '*.js' -print -quit)"
+          # -a: un chunk minificado con bytes raros no puede quedar fuera del grep.
+          if grep -Ral -e 'test\.onlysfree\.com' -e 'ai\.onlysfree\.com' out; then
+            echo "::error::El export contiene URLs de QA (test./ai.onlysfree.com)"
+            exit 1
+          fi
+          if ! grep -Ral 'admin\.onlysfree\.com/api' out > /dev/null; then
+            echo "::error::El export no contiene la API de produccion"
+            exit 1
+          fi
+
+      - name: Empaquetar ZIP (respaldo del build)
+        run: |
+          set -euo pipefail
+          NAME="onlysfree-pdn-${GITHUB_SHA::7}-run${GITHUB_RUN_NUMBER}"
+          echo "ARTIFACT_ZIP=${NAME}.zip" >> "$GITHUB_ENV"
+          ( cd out && zip -r "../${NAME}.zip" . )
+          unzip -l "${NAME}.zip" > /dev/null
+
+      - name: Subir ZIP
+        uses: actions/upload-artifact@v7
+        with:
+          path: ${{ env.ARTIFACT_ZIP }}
+          archive: false
+          retention-days: 90
+          if-no-files-found: error
+          include-hidden-files: true
+
+      # Llave dedicada, sin forwarding y con no-pty; host key pineada por secret.
+      - name: Configurar SSH de deploy
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.PDN_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.PDN_SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/pdn_deploy
+          chmod 600 ~/.ssh/pdn_deploy
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          ssh-keygen -y -f ~/.ssh/pdn_deploy > /dev/null
+
+      # Sin backup no se toca produccion.
+      - name: Backup del docroot
+        env:
+          PDN_SSH_HOST: ${{ vars.PDN_SSH_HOST }}
+          PDN_SSH_PORT: ${{ vars.PDN_SSH_PORT }}
+          PDN_SSH_USER: ${{ vars.PDN_SSH_USER }}
+          PDN_DEPLOY_PATH: ${{ vars.PDN_DEPLOY_PATH }}
+        run: |
+          set -euo pipefail
+          STAMP=$(date -u +%Y%m%d_%H%M%S)
+          BACKUP="pdn-${GITHUB_SHA:0:7}-${STAMP}.tar.gz"
+          ssh -i ~/.ssh/pdn_deploy -p "$PDN_SSH_PORT" -o IdentitiesOnly=yes \
+            "$PDN_SSH_USER@$PDN_SSH_HOST" \
+            "mkdir -p ~/pdn_backup && tar czf ~/pdn_backup/$BACKUP -C ~/$PDN_DEPLOY_PATH . && ls -lh ~/pdn_backup/$BACKUP"
+
+      # cleanup=false -> copia aditiva (los assets viejos siguen ahi para el HTML
+      # cacheado). cleanup=true -> --delete, cuando ya nadie sirve el build viejo.
+      - name: Sincronizar export a PDN
+        env:
+          PDN_SSH_HOST: ${{ vars.PDN_SSH_HOST }}
+          PDN_SSH_PORT: ${{ vars.PDN_SSH_PORT }}
+          PDN_SSH_USER: ${{ vars.PDN_SSH_USER }}
+          PDN_DEPLOY_PATH: ${{ vars.PDN_DEPLOY_PATH }}
+          CLEANUP: ${{ inputs.cleanup || 'false' }}
+        run: |
+          set -euo pipefail
+          DELETE=""
+          if [ "$CLEANUP" = "true" ]; then
+            DELETE="--delete"
+            echo "Modo limpieza: se borra del docroot lo que no este en el export"
+          else
+            echo "Modo aditivo: no se borra nada (primer deploy o HTML cacheado en circulacion)"
+          fi
+          rsync -az $DELETE \
+            --exclude '.well-known/' \
+            --exclude 'out.zip' \
+            --exclude 'copia-sitio-web.zip' \
+            --exclude '.htaccess.old' \
+            --exclude '.htaccess.bak-*' \
+            -e "ssh -i $HOME/.ssh/pdn_deploy -p $PDN_SSH_PORT -o IdentitiesOnly=yes" \
+            out/ "$PDN_SSH_USER@$PDN_SSH_HOST:~/$PDN_DEPLOY_PATH/"
+
+      # El id sale de la API real: si cambia el contenido, el smoke no queda atado
+      # a un producto que puede desaparecer.
+      - name: Smoke test de produccion
+        run: |
+          set -euo pipefail
+          ID=$(curl -sS -m 20 'https://admin.onlysfree.com/api/packs?page=1' | grep -oE '"id":[0-9]+' | head -1 | cut -d: -f2)
+          echo "id de producto para el smoke: ${ID:-ninguno}"
+          check() {
+            code=$(curl -sS -o /dev/null -w '%{http_code}' -m 20 "$1")
+            echo "$code  $1"
+            [ "$code" = "200" ]
+          }
+          check "https://onlysfree.com/"
+          check "https://onlysfree.com/deals/daily"
+          check "https://onlysfree.com/deals/flash"
+          check "https://onlysfree.com/search/query"
+          check "https://onlysfree.com/streamings"
+          if [ -n "${ID:-}" ]; then check "https://onlysfree.com/products/detail?id=$ID"; fi
+          CODE404=$(curl -sS -o /dev/null -w '%{http_code}' -m 20 "https://onlysfree.com/no-existe-$GITHUB_RUN_ID")
+          echo "$CODE404  /no-existe (debe ser 404)"
+          [ "$CODE404" = "404" ]
+
+      # Igual que en QA: el cache-buster prueba que el docroot sirve este build;
+      # la URL limpia puede seguir con el anterior por el cache del server.
+      - name: Verificar version en vivo (buildId)
+        run: |
+          set -euo pipefail
+          EXPECTED=$(grep -o '"buildId":"[^"]*"' out/index.html | head -1 | cut -d'"' -f4)
+          echo "buildId build: $EXPECTED"
+
+          BUSTED=$(curl -sS -m 20 "https://onlysfree.com/?cb=${GITHUB_RUN_ID}" | grep -o '"buildId":"[^"]*"' | head -1 | cut -d'"' -f4 || true)
+          echo "buildId servido (sin cache): ${BUSTED:-vacio}"
+          if [ "$BUSTED" != "$EXPECTED" ]; then
+            echo "::error::El docroot no sirve este build: build=$EXPECTED servido=${BUSTED:-vacio}"
+            exit 1
+          fi
+
+          for i in $(seq 1 12); do
+            LIVE=$(curl -sS -m 20 https://onlysfree.com/ | grep -o '"buildId":"[^"]*"' | head -1 | cut -d'"' -f4 || true)
+            if [ "$LIVE" = "$EXPECTED" ]; then
+              echo "OK: la URL limpia ya sirve $EXPECTED"
+              exit 0
+            fi
+            echo "intento $i: la URL limpia aun sirve ${LIVE:-vacio}"
+            sleep 10
+          done
+          echo "::warning::El deploy es correcto, pero https://onlysfree.com/ sigue sirviendo ${LIVE:-nada} (cache del server sin purgar)."
+          exit 0
