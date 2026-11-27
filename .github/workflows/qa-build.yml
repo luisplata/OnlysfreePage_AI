@@ -44,11 +44,11 @@ jobs:
         run: npm test
 
       # NEXT_PUBLIC_* se inlinea al compilar: solo cuenta el valor presente aca.
-      # Si las vars QA_* no existen, cae en test.onlysfree.com.
+      # Front QA = ai.onlysfree.com; backend QA = test.onlysfree.com.
       - name: Build con URLs de QA
         env:
           NEXT_PUBLIC_API_URL: ${{ vars.QA_API_URL || 'https://test.onlysfree.com/api' }}
-          NEXT_PUBLIC_WEB_URL: ${{ vars.QA_WEB_URL || 'https://test.onlysfree.com' }}
+          NEXT_PUBLIC_WEB_URL: ${{ vars.QA_WEB_URL || 'https://ai.onlysfree.com' }}
         run: npm run build
 
       # Next solo copia public/ (que no existe): el .htaccess viaja a mano.
@@ -99,3 +99,66 @@ jobs:
           retention-days: 1
           if-no-files-found: error
           include-hidden-files: true
+
+      # --- Deploy a QA (ai.onlysfree.com) ---
+      # La llave es dedicada: en authorized_keys lleva no-pty, sin forwarding y
+      # sin user-rc. El host key va pineado por secret, asi que nunca hace falta
+      # StrictHostKeyChecking=no.
+      - name: Configurar SSH de deploy
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.QA_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.QA_SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/qa_deploy
+          chmod 600 ~/.ssh/qa_deploy
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          # Falla aca y no en rsync si la llave quedo mal pegada en el secret.
+          ssh-keygen -y -f ~/.ssh/qa_deploy > /dev/null
+
+      # Sin red de seguridad no se toca el docroot: el tar.gz queda en ~/qa_backup.
+      - name: Backup del docroot remoto
+        env:
+          QA_SSH_HOST: ${{ vars.QA_SSH_HOST }}
+          QA_SSH_PORT: ${{ vars.QA_SSH_PORT }}
+          QA_SSH_USER: ${{ vars.QA_SSH_USER }}
+          QA_DEPLOY_PATH: ${{ vars.QA_DEPLOY_PATH }}
+        run: |
+          set -euo pipefail
+          STAMP=$(date -u +%Y%m%d_%H%M%S)
+          BACKUP="ai-${GITHUB_SHA:0:7}-${STAMP}.tar.gz"
+          ssh -i ~/.ssh/qa_deploy -p "$QA_SSH_PORT" -o IdentitiesOnly=yes \
+            "$QA_SSH_USER@$QA_SSH_HOST" \
+            "mkdir -p ~/qa_backup && tar czf ~/qa_backup/$BACKUP -C ~/$QA_DEPLOY_PATH . && ls -lh ~/qa_backup/$BACKUP"
+
+      # --delete limpia archivos viejos del docroot, pero los excludes los
+      # protegen: .well-known (certificados) y out.zip (respaldo manual).
+      - name: Sincronizar export a QA
+        env:
+          QA_SSH_HOST: ${{ vars.QA_SSH_HOST }}
+          QA_SSH_PORT: ${{ vars.QA_SSH_PORT }}
+          QA_SSH_USER: ${{ vars.QA_SSH_USER }}
+          QA_DEPLOY_PATH: ${{ vars.QA_DEPLOY_PATH }}
+        run: |
+          set -euo pipefail
+          rsync -az --delete \
+            --exclude '.well-known/' \
+            --exclude 'out.zip' \
+            -e "ssh -i $HOME/.ssh/qa_deploy -p $QA_SSH_PORT -o IdentitiesOnly=yes" \
+            out/ "$QA_SSH_USER@$QA_SSH_HOST:~/$QA_DEPLOY_PATH/"
+
+      # Un deploy que no sirve rutas no es un deploy: si esto falla, el run falla.
+      - name: Smoke test de QA
+        run: |
+          set -euo pipefail
+          check() {
+            code=$(curl -sS -o /dev/null -w '%{http_code}' -m 20 "$1")
+            echo "$code  $1"
+            [ "$code" = "200" ]
+          }
+          check "https://ai.onlysfree.com/"
+          check "https://ai.onlysfree.com/products/detail?id=4476"
+          check "https://ai.onlysfree.com/deals/daily"
+          check "https://ai.onlysfree.com/search/query"
