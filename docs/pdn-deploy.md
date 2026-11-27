@@ -23,7 +23,7 @@ Plan de despliegue del export estático a producción. Reutiliza todo lo aprendi
 | Dominio | `ai.onlysfree.com` | `onlysfree.com` |
 | Docroot | `~/ai.onlysfree.com` | `~/public_html` |
 | API | `https://test.onlysfree.com/api` | `https://admin.onlysfree.com/api` |
-| Disparador | push a `main` + manual | **manual** (+ tag), con aprobación |
+| Disparador | push a `main` + manual | **solo manual**, con aprobación |
 | Ads | endpoints existen | **no existen todavía** |
 | Costo de un error | se re-deploya | visitantes reales + SEO |
 
@@ -53,7 +53,7 @@ Copiar la estructura de `qa-build.yml` cambiando:
 
 | Paso | Cambio para PDN |
 |---|---|
-| Triggers | `workflow_dispatch` (+ `push` de tags `v*`), **nunca** push a `main` |
+| Triggers | `workflow_dispatch` **solo manual**: ni push a `main` ni tags |
 | `environment` | `production` (aprobación manual) |
 | Build env | `NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_WEB_URL` desde `PDN_*` |
 | Guardas | invertidas: falla si aparece `test.onlysfree.com` o `ai.onlysfree.com` |
@@ -112,7 +112,7 @@ rollback no se ve hasta que expire: no hacer cambios a ciegas.
 | Cache sirviendo HTML viejo con assets borrados | Deploy aditivo (paso 3.1) y limpieza diferida (3.2) |
 | Ads sin backend en producción | Decisión de fase 0; el slot degrada a "Ad Error", no rompe la página |
 | Build "verde" con tipos rotos | `typecheck` antes del build (ya está) |
-| Deploy accidental | Solo `workflow_dispatch`/tag + environment con aprobación |
+| Deploy accidental | Solo `workflow_dispatch` + environment con aprobación |
 | Pérdida del sitio actual | Backup tar.gz previo + ZIP con 90 días de retención |
 
 ## Orden sugerido

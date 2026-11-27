@@ -1,7 +1,7 @@
 # Release a PDN (onlysfree.com) desde CI.
 #
 # Diferencias con QA (qa-build.yml):
-#   - Solo manual (o tag v*), nunca push a main, y pasa por el environment
+#   - Solo manual: nunca push a main ni tags, y pasa por el environment
 #     "production" (ahi se pueden exigir reviewers).
 #   - Compila con las URLs de produccion y falla si el export queda apuntando a QA.
 #   - No cancela un deploy en curso: concurrency sin cancel-in-progress.
@@ -17,8 +17,6 @@ on:
         description: "Borrar del docroot lo que no este en el export (solo tras confirmar que el build nuevo ya se sirve)"
         type: boolean
         default: false
-  push:
-    tags: ['v*']
 
 permissions:
   contents: read
