@@ -23,17 +23,13 @@
     RewriteCond %{DOCUMENT_ROOT}%{REQUEST_URI}.html -s
     RewriteRule ^(.*)$ $1.html [NC,L]
 
-    # Fallback to 404.html if it exists (Next.js generated)
-    RewriteCond %{REQUEST_FILENAME} !-f
-    RewriteCond %{DOCUMENT_ROOT}/404.html -f
-    RewriteRule . /404.html [L]
+    # Sin fallback a 404.html: un rewrite devuelve el contenido con status 200
+    # (soft 404). Las rutas inexistentes las resuelve el ErrorDocument de abajo.
 
-    # Alternatively, if you prefer SPA-like behavior and have no specific 404.html,
-    # you could fallback to index.html for client-side routing to handle it.
-    # However, for Next.js static export with individual HTML files, the above 404.html rule is generally better.
-    # RewriteCond %{REQUEST_FILENAME} !-f
-    # RewriteRule . /index.html [L]
 </IfModule>
+
+# 404 real: sirve 404.html CON status 404. Es lo que evita el soft 404.
+ErrorDocument 404 /404.html
 
 # Comment out or remove this section if your site does not use PHP at all.
 # <IfModule mime_module>
